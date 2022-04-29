@@ -1,4 +1,6 @@
-__pycache__/:
+*/__pycache__
 *.log
 main.py
 test.*
+/Test
+/.idea
