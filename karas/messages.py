@@ -69,16 +69,18 @@ class StrangerMessage(MessageBase):
     def __str__(self) -> str:
         return f"StrangerMessage:{self.sender.nickname}[{self.sender.id}]" + super().__str__()
 
+
 class OtherClientMessage(MessageBase):
-    type:str = "OtherClientMessage"
+    type: str = "OtherClientMessage"
     sender: Client
-    messageChain:MessageChain
+    messageChain: MessageChain
 
 
 class FriendSyncMessage(MessageBase):
     type: str = "FriendSyncMessage"
     subject: Subject
     messageChain: MessageChain
+
 
 class MessageEnum(Enum):
     GroupMessage: "GroupMessage" = GroupMessage
