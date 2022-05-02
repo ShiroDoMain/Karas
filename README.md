@@ -3,8 +3,9 @@
 <p>这是一个基于<a href="https://github.com、project-mirai/mirai-api-http">mirai-api-http</a>的qq机器人框架  </p>
 </div>
 
-##  Version
+##  Version  
 ![Mirai-API-API-Version](https://img.shields.io/badge/mirai--http--api-2.5.0-brightgreen.svg?style=plastic)
+![python-Version](https://img.shields.io/badge/python->=3.7-brightgreen.svg?style=plastic)  
 ## 使用  
 - 首先你需要安装requirements中的依赖  
 ```shell script
