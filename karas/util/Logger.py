@@ -63,13 +63,17 @@ def os_check(color):
 
 class Logging:
 
-    def __init__(self, loggerLevel: Union[str, int], botId: int) -> None:
+    def __init__(self, loggerLevel: Union[str, int], botId: int, file: str = None) -> None:
         self.logging = logging.getLogger()
-        self.logging.setLevel(loggerLevel.upper())
+        self.logging.setLevel(level=loggerLevel.upper())
         self.botId = botId
         self.handle = logging.StreamHandler()
-        self.handle.setLevel(loggerLevel.upper())
-        self.logging.addHandler(self.handle)
+        self.handle.setLevel(level=loggerLevel.upper())
+        if file:
+            file_handler = logging.FileHandler(filename=file)
+            file_handler.setLevel(loggerLevel.upper())
+            self.logging.addHandler(hdlr=file_handler)
+        self.logging.addHandler(hdlr=self.handle)
 
     def format_time(self, msg: str, name: str, qq: int, level: str, _color: str = ""):
         current_time = time.localtime()

@@ -11,6 +11,7 @@ from .permission import Permission, PermissionEnum
 
 
 class ReceptorBase(BaseModel):
+    id: int
 
     def __init__(self, **kws) -> None:
         _permission = kws.get("permission")
@@ -72,9 +73,8 @@ class Operator(ReceptorBase):
     group: Group
     specialTitle: str
     joinTimestamp: int
-    lastSpeakTimestamp:int
-    muteTimeRemaining:int
-
+    lastSpeakTimestamp: int
+    muteTimeRemaining: int
 
 
 class Member(ReceptorBase):
@@ -97,14 +97,12 @@ class Subject(ReceptorBase):
     id: int
     kind: Union["Group", "Friend"]
 
+
 class Client(ReceptorBase):
     """"""
     type: str = "Client"
-    id:int
-    platform:str
-
-
-
+    id: int
+    platform: str
 
 
 class ElementsEnum(Enum):

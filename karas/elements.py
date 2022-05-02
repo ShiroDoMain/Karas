@@ -16,37 +16,51 @@ class ElementBase(BaseModel):
 
 
 class At(ElementBase):
-    type: str = "At"
     target: int
     display: str
 
+    def __init__(self, **kwargs):
+        self.type: str = "At"
+        super().__init__(**kwargs)
+
 
 class AtAll(ElementBase):
-    type: str = "At"
+    def __init__(self, **kwargs):
+        self.type: str = "AtAll"
+        super().__init__(**kwargs)
 
 
 class Face(ElementBase):
-    type: str = "Face"
     faceId: int
     name: str
 
+    def __init__(self, **kwargs):
+        self.type: str = "Face"
+        super().__init__(**kwargs)
+
 
 class Plain(ElementBase):
-    type: str = "Plain"
     text: str
+
+    def __init__(self, text, **kwargs):
+        super().__init__(**kwargs)
+        self.type: str = "Plain"
+        self.text = text
 
     def __str__(self) -> str:
         return self.text
 
 
 class Source(ElementBase):
-    type: str = "Source"
     id: int
     time: int
 
+    def __init__(self, **kwargs):
+        self.type: str = "Source"
+        super().__init__(**kwargs)
+
 
 class Image(ElementBase):
-    type: str = "Image"
     imageId: str
     url: str
     path: str
@@ -54,6 +68,7 @@ class Image(ElementBase):
 
     def __init__(self, file: Union[str, BinaryIO, bytes, None] = None, *args, **kwargs) -> None:
         super().__init__(**kwargs)
+        self.type: str = "Image"
         self.ftype = "img"
         # self.type = "Image"
         self.file = file
@@ -67,15 +82,17 @@ class Image(ElementBase):
 
 
 class FlashImage(Image):
-    type: str = "FlashImage"
     imageId: str
     url: str
     path: str
     base64: str
 
+    def __init__(self, **kwargs):
+        self.type: str = "FlashImage"
+        super().__init__(**kwargs)
+
 
 class Voice(ElementBase):
-    type: str = "Voice"
     voiceId: str
     url: str
     path: Optional[str]
@@ -84,6 +101,7 @@ class Voice(ElementBase):
 
     def __init__(self, file: Union[str, BinaryIO, bytes, None] = None, *args, **kwargs) -> None:
         super().__init__(**kwargs)
+        self.type: str = "Voice"
         self.ftype = "voice"
         self.type = "Voice"
         self.file = file
@@ -97,17 +115,26 @@ class Voice(ElementBase):
 
 
 class Xml(ElementBase):
-    type: str = "Xml"
     xml: str
+
+    def __init__(self, **kwargs):
+        self.type: str = "Xml"
+        super().__init__(**kwargs)
 
 
 class Json(ElementBase):
-    type: str = "Json"
     json: str
+
+    def __init__(self, **kwargs):
+        self.type: str = "Json"
+        super().__init__(**kwargs)
 
 
 class App(ElementBase):
-    type: str = "App"
+    def __init__(self, **kwargs):
+        self.type: str = "App"
+        super().__init__(**kwargs)
+
     content: str
 
 
@@ -123,20 +150,30 @@ class Poke(ElementBase):
     Args:
         ElementBase (_type_): _description_
     """
-    type: str = "Poke"
     name: str
+
+    def __init__(self, **kwargs):
+        self.type: str = "Poke"
+        super().__init__(**kwargs)
 
 
 class Dice(ElementBase):
-    type: str = "Dice"
     value: int
+
+    def __init__(self, **kwargs):
+        self.type: str = "Dice"
+        super().__init__(**kwargs)
 
 
 class MarketFace(ElementBase):
     """目前商城表情仅支持接收和转发，不支持构造发送"""
-    type: str = "MarketFace"
+
     id: int
     name: str
+
+    def __init__(self, **kwargs):
+        self.type: str = "MarketFace"
+        super().__init__(**kwargs)
 
 
 class MusicShare(ElementBase):
@@ -152,7 +189,7 @@ class MusicShare(ElementBase):
     Args:
         ElementBase (_type_): _description_
     """
-    type: str = "MusicShare"
+
     kind: str
     title: str
     summary: str
@@ -161,17 +198,52 @@ class MusicShare(ElementBase):
     musicUrl: str
     brief: str
 
+    def __init__(self, **kwargs):
+        self.type: str = "MusicShare"
+        super().__init__(**kwargs)
+
 
 class File(ElementBase):
-    type: str = "File"
     id: int
     name: str
     size: int
 
+    def __init__(self, **kwargs):
+        self.type: str = "File"
+        super().__init__(**kwargs)
+
 
 class MiraiCode(ElementBase):
-    type: str = "MiraiCode"
+    def __init__(self, **kwargs):
+        self.type: str = "MiraiCode"
+        super().__init__(**kwargs)
+
     code: str
+
+
+class Profile(BaseModel):
+    nickname: str
+    email: str
+    age: int
+    level: int
+    sign: str
+    sex: str
+
+
+class FriendProfile(Profile):
+    """好友资料"""
+
+
+class MemberProfile(ElementBase):
+    """成员资料"""
+
+
+class UserProfile(ElementBase):
+    """用户资料"""
+
+
+class BotProfile(ElementBase):
+    """Bot资料"""
 
 
 class MessageElementEnum(Enum):

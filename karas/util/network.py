@@ -1,5 +1,7 @@
 from typing import Optional, Union
 
+import aiohttp
+
 
 def error_throw(func):
     async def wrapper(*args, **kwargs):
@@ -9,11 +11,20 @@ def error_throw(func):
             raise e
         else:
             return _response
-
     return wrapper
 
 
-def send_json(
+def echo_receiver(ws: aiohttp.ClientWebSocketResponse, _return: str = None):
+    def wrapper(func):
+        async def decorator(*args, **kwargs):
+            await func(*args, **kwargs)
+            response = await ws.receive_json()
+            return _return and response.get(_return)
+        return decorator
+    return wrapper
+
+
+def wrap_data_json(
         command: str, syncId: Union[int, str] = None,
         subCommand: Optional[str] = None,
         content: dict = None) -> dict:

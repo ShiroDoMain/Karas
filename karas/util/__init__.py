@@ -1,4 +1,11 @@
-class BaseModel(object):
+class MetaBase(type):
+    def __new__(mcs, name, bases, namespace):
+        if not namespace.get("type"):
+            namespace["type"] = name
+        return super().__new__(mcs, name, bases, namespace)
+
+
+class BaseModel(metaclass=MetaBase):
     type: str
 
     def __init__(self, **kws) -> None:
@@ -6,11 +13,11 @@ class BaseModel(object):
             _k = _k if _k != "from" else "From"
             _type = self.__annotations__.get(_k)
             try:
-                if _v is not None and not isinstance(_v, _type):
+                if _type and _v is not None and not isinstance(_v, _type):
                     _v = _type(**_v) \
                         if _k != "messageChain" and _k != "origin" else _type(*_v)
             except:
-                print(_k,":",_v, "=>", _type)
+                print(_k, ":", _v, "=>", _type)
                 print(self.__annotations__)
                 raise
             setattr(self, _k, _v)

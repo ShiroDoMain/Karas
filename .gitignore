@@ -1,6 +1,7 @@
 */__pycache__
 *.log
 main.py
-test.*
+test*.*
 /Test
 /.idea
+/mirai*
