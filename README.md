@@ -1,6 +1,6 @@
 <div align="center">
     <h1>Karas</h1><br>
-<p>这是一个基于<a href="https://github.com、project-mirai/mirai-api-http">mirai-api-http</a>的qq机器人框架  </p>
+<p>这是一个基于<a href="https://github.com/project-mirai/mirai-api-http">mirai-api-http</a>的qq机器人框架  </p>
 </div>
 
 ##  Version  
