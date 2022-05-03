@@ -5,3 +5,4 @@ test*.*
 /Test
 /.idea
 /mirai*
+.DS_Store

@@ -4,7 +4,7 @@ from typing import Union
 
 from .util import BaseModel
 
-from .Sender import Client, Member, Sender, Friend, Subject
+from .Sender import Client, Group, Member, Sender, Friend, Subject
 from .chain import MessageChain
 from .elements import ElementBase
 
@@ -31,6 +31,10 @@ class GroupMessage(MessageBase):
     type: str = "GroupMessage"
     sender: Member
     messageChain: MessageChain
+    
+    def __init__(self, **kws) -> None:
+        super().__init__(**kws)
+        self.group = kws.get("sender") and self.sender.group
 
     def __str__(self) -> str:
         return f"GroupMessage:[{self.sender.group.name}({self.sender.group.id})]{self.sender.memberName}({self.sender.id}) <= " + super().__str__()
@@ -51,6 +55,10 @@ class TempMessage(MessageBase):
     type: str = "TempMessage"
     sender: Member
     messageChain: MessageChain
+
+    def __init__(self, **kws) -> None:
+        super().__init__(**kws)
+        self.group = kws.get("sender") and self.sender.group
 
     def __str__(self) -> str:
         return f"TempMessage:[{self.sender.memberName}({self.sender.id})]" + super().__str__()

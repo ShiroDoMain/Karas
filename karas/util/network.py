@@ -1,6 +1,7 @@
 from typing import Optional, Union
-
+import sys
 import aiohttp
+import traceback
 
 
 def error_throw(func):
@@ -8,7 +9,8 @@ def error_throw(func):
         try:
             _response = await func(*args, **kwargs)
         except Exception as e:
-            raise e
+            _,_,tb = sys.exc_info()
+            traceback.print_tb(tb)
         else:
             return _response
     return wrapper
