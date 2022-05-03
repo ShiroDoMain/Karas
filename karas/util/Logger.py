@@ -1,6 +1,8 @@
 from enum import Enum
 import logging
-import ctypes, sys
+import ctypes
+import sys
+import os
 import time
 from typing import Union
 
@@ -30,7 +32,8 @@ class WindowsCMD(Enum):
 
     @classmethod
     def reset(cls, handle):
-        ctypes.windll.kernel32.SetConsoleTextAttribute(handle, cls.RED.value | cls.GREEN.value | cls.BLUE.value)
+        ctypes.windll.kernel32.SetConsoleTextAttribute(
+            handle, cls.RED.value | cls.GREEN.value | cls.BLUE.value)
 
 
 class UnixShell(Enum):
@@ -63,36 +66,53 @@ def os_check(color):
 
 class Logging:
 
-    def __init__(self, loggerLevel: Union[str, int], botId: int, file: str = None) -> None:
+    def __init__(
+        self,
+        loggerLevel: Union[str, int],
+        botId: int,
+        filename: str = None,
+        logFile: bool = False
+    ) -> None:
         self.logging = logging.getLogger()
         self.logging.setLevel(level=loggerLevel.upper())
         self.botId = botId
         self.handle = logging.StreamHandler()
         self.handle.setLevel(level=loggerLevel.upper())
-        if file:
-            file_handler = logging.FileHandler(filename=file)
-            file_handler.setLevel(loggerLevel.upper())
-            self.logging.addHandler(hdlr=file_handler)
+        self._logFile = logFile
+        self.filename = filename
+        if self.filename is None and not os.path.exists("logs"):
+            os.mkdir("logs")
         self.logging.addHandler(hdlr=self.handle)
+
+    def _wirte(self, text, _localtime) -> None:
+        with open(self.filename or time.strftime("logs/%Y-%m-%d.log", _localtime), "a") as f:
+            f.write(text+"\n")
 
     def format_time(self, msg: str, name: str, qq: int, level: str, _color: str = ""):
         current_time = time.localtime()
         color = _color if _color else ""
         color_end = '\033[0m' if color else ""
-        return f"{color}{time.strftime('%Y-%M-%d %H:%m:%S', current_time)}-[{level}]-{name}/{qq or self.botId}: {msg}{color_end}"
+        _format = f"{color}{time.strftime('%Y-%M-%d %H:%m:%S', current_time)}-[{level}]-{name}/{qq or self.botId}: {msg}{color_end}"
+        _log = f"{time.strftime('%Y-%M-%d %H:%m:%S', current_time)}-[{level}]-{name}/{qq or self.botId}: {msg}"
+        self._wirte(_log, current_time)
+        return _format
 
     @os_check("BLUE")
     def debug(self, msg, name: str = "bot", qq: int = None, _color: str = ""):
-        self.logging.debug(self.format_time(msg=msg, name=name, qq=qq, level="DEBUG", _color=_color))
+        self.logging.debug(self.format_time(
+            msg=msg, name=name, qq=qq, level="DEBUG", _color=_color))
 
     @os_check("GREEN")
     def info(self, msg, name: str = "bot", qq: int = None, _color: str = ""):
-        self.logging.info(self.format_time(msg=msg, name=name, qq=qq, level="INFO", _color=_color))
+        self.logging.info(self.format_time(msg=msg, name=name,
+                          qq=qq, level="INFO", _color=_color))
 
     @os_check("YELLOW")
     def warning(self, msg, name: str = "bot", qq: int = None, _color: str = ""):
-        self.logging.warning(self.format_time(msg=msg, name=name, qq=qq, level="WARNING", _color=_color))
+        self.logging.warning(self.format_time(
+            msg=msg, name=name, qq=qq, level="WARNING", _color=_color))
 
     @os_check("RED")
     def error(self, msg, name: str = "bot", qq: int = None, _color: str = ""):
-        self.logging.error(self.format_time(msg=msg, name=name, qq=qq, level="ERROR", _color=_color))
+        self.logging.error(self.format_time(
+            msg=msg, name=name, qq=qq, level="ERROR", _color=_color))

@@ -1,6 +1,6 @@
 from aiohttp import ClientSession
 import asyncio
-from typing import List, Optional, Union, AsyncGenerator
+from typing import Dict, List, Optional, Union, AsyncGenerator
 from .chain import MessageChain
 from .Sender import Friend, Group, Member, Stranger, ReceptorBase
 from .messages import MessageBase
@@ -35,7 +35,8 @@ class Karas(object):
     @classmethod
     async def event_parse(cls, original: dict, _logger: Logging = None) -> AsyncGenerator:
         # print(f"\nOriginal:{original}\n")
-        _event: Union[MessageBase, Event] = Auto_Switch_Event.parse_json(**original)
+        _event: Union[MessageBase,
+                      Event] = Auto_Switch_Event.parse_json(**original)
         isBotEvent = yield _event
         _logger.info(_event)
         if isBotEvent:
@@ -58,8 +59,10 @@ class Karas(object):
             _message_dict = message.__dict__
             _func_params = listener.__annotations__
 
-            _reversed = {_v if isinstance(type, type(_v)) else type(_v): _k for _k, _v in _message_dict.items()}
-            _types = [v if isinstance(type, type(v)) else type(v) for v in _message_dict.values()]
+            _reversed = {_v if isinstance(type, type(_v)) else type(
+                _v): _k for _k, _v in _message_dict.items()}
+            _types = [v if isinstance(type, type(v)) else type(v)
+                      for v in _message_dict.values()]
             _o = {}
             for k, t in _func_params.items():
                 if t in _types:
@@ -84,7 +87,9 @@ class Yurine(object):
             protocol: str = "ws",
             sessionKey: str = None,
             session: ClientSession = None,
-            loggerLevel: str = "INFO"
+            loggerLevel: str = "INFO",
+            logToFile=False,
+            logFileName: str = None
     ) -> None:
         self.url = f"{protocol}://{host}:{port}"
         self.protocol = protocol
@@ -96,7 +101,8 @@ class Yurine(object):
         self.offline = False
 
         self.route = URL_Route(self.url)
-        self.logging = Logging(loggerLevel, qq)
+        self.logging = Logging(
+            loggerLevel, qq, filename=logFileName, logFile=logToFile)
         self.loop = loop or asyncio.get_event_loop()
         self.karas = karas or Karas
 
@@ -109,20 +115,6 @@ class Yurine(object):
             await self._connect()
             self.logging.info("Account verify success")
             self.logging.debug(f"got verifyKey {self.sessionKey}")
-
-            # async with self.session.post(
-            #         "/bind",
-            #         json={
-            #             "qq": self.account,
-            #             "sessionKey": self.sessionKey
-            #         }
-            # ) as _bind_response:
-            #     _bind_response.raise_for_status()
-            #     _bind_msg = await _bind_response.json()
-            #     self.logging.debug(f"accout bind response {_bind_msg}")
-            #     if _bind_msg.get("msg") == "success":
-            #         self.logging.info("Account bind success")
-            #         self.session.headers["sessionKey"] = self.sessionKey
 
     @error_throw
     async def _release(self):
@@ -188,7 +180,8 @@ class Yurine(object):
         while True:
             _receive_data: dict = await self.ws.receive_json()
             if _receive_data.get("syncId") == "-1":
-                _parser = self.karas.event_parse(_receive_data["data"], self.logging)
+                _parser = self.karas.event_parse(
+                    _receive_data["data"], self.logging)
                 _event = await _parser.__anext__()
                 await _parser.asend(self.account == _event.event.fromId) \
                     if isinstance(_event, Event) else await _parser.asend(False)
@@ -202,11 +195,13 @@ class Yurine(object):
             None: NoReturn
         """
         if registerEvent:
-            registerEvent = registerEvent if isinstance(registerEvent, str) else registerEvent.type
+            registerEvent = registerEvent if isinstance(
+                registerEvent, str) else registerEvent.type
 
         def register_decorator(Callable):
             def register_wrapper(*args, **kwargs):
-                self.logging.debug(f"register listener [{Callable.__name__}] for Event[{registerEvent}]")
+                self.logging.debug(
+                    f"register listener [{Callable.__name__}] for Event[{registerEvent}]")
                 if Karas.listeners.get(registerEvent):
                     Karas.listeners.get(registerEvent).apeend(Callable)
                 else:
@@ -234,7 +229,8 @@ class Yurine(object):
                 data={
                     "sessionKey": self.sessionKey,
                     "type": type,
-                    obj.ftype: open(obj.file, "rb") if isinstance(obj.file, str) else obj.file
+                    obj.ftype: open(obj.file, "rb") if isinstance(
+                        obj.file, str) else obj.file
                 }
         ) as _response:
             _response_json = await _response.json()
@@ -443,7 +439,7 @@ class Yurine(object):
         data = echo.get("data")
         return data and [Group(**group) for group in data.get("data")]
 
-    async def fetchMemberList(self, group: [Group, int]) -> Optional[List[Member]]:
+    async def fetchMemberList(self, group: Union[Group, int]) -> Optional[List[Member]]:
         """
         获取群成员列表
         """
@@ -459,7 +455,7 @@ class Yurine(object):
         data = echo.get("data")
         return data and [Member(**member) for member in data.get("data")]
 
-    async def fetchMemberProfile(self, group: Union[Group, int], member: [Member, int]) -> Optional[MemberProfile]:
+    async def fetchMemberProfile(self, group: Union[Group, int], member: Union[Member, int]) -> Optional[MemberProfile]:
         """
         获取成员详细资料
         """
@@ -512,8 +508,14 @@ class Yurine(object):
             try:
                 await _task
             except asyncio.CancelledError:
-                self.logging.debug(f"cancel <task {id(_task)}>")
-                ...
+                self.logging.debug(f"canceled <task {id(_task)}>")
+
+    async def _raise_status(self) -> Dict:
+        # TODO
+        _data = await self.ws.receive_json()
+        _status_code = _data.get("code")
+        if not _status_code:
+            self.logging.error()
 
     def run_forever(self) -> None:
         """挂起"""
@@ -522,7 +524,7 @@ class Yurine(object):
         try:
             self.loop.run_forever()
         except KeyboardInterrupt:
-            self.logging.info("Bot close...")
+            self.logging.info("Bot closing...")
             raise
         finally:
             self.close()
@@ -558,9 +560,9 @@ class Yurine(object):
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        self.logging.debug("exit service")
+        self.logging.debug("exiting service")
         await self.stop()
-        self.logging.info("exiting...")
+        self.logging.info("exit")
 
     def __enter__(self):
         self.loop.run_until_complete(self._initialization())

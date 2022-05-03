@@ -31,13 +31,13 @@ class GroupMessage(MessageBase):
     type: str = "GroupMessage"
     sender: Member
     messageChain: MessageChain
-    
+
     def __init__(self, **kws) -> None:
         super().__init__(**kws)
         self.group = kws.get("sender") and self.sender.group
 
     def __str__(self) -> str:
-        return f"GroupMessage:[{self.sender.group.name}({self.sender.group.id})]{self.sender.memberName}({self.sender.id}) <= " + super().__str__()
+        return f"GroupMessage:[{self.sender.group.name}({self.sender.group.id})]{self.sender.memberName}({self.sender.id}) => " + super().__str__()
 
 
 class FriendMessage(MessageBase):
@@ -47,7 +47,7 @@ class FriendMessage(MessageBase):
     messageChain: MessageChain
 
     def __str__(self) -> str:
-        return f"FriendMessage:{self.sender.nickname}({self.sender.nickname}) <= " + super().__str__()
+        return f"FriendMessage:{self.sender.nickname}({self.sender.nickname}) => " + super().__str__()
 
 
 class TempMessage(MessageBase):
