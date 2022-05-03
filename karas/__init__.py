@@ -9,7 +9,7 @@ from .elements import ElementBase, File, FlashImage, Image, Plain, Source, Voice
     BotProfile, UserProfile
 from .exceptions import InvalidArgumentError, VerifyError
 from .util.Logger import Logging
-from .util.network import error_throw, URL_Route, wrap_data_json, echo_receiver
+from .util.network import error_throw, URL_Route, wrap_data_json
 
 
 async def _build_content_json(

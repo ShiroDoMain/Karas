@@ -82,10 +82,7 @@ class MessageChain(BaseModel):
         Returns:
             str: 一个表示消息链的字符串
         """
-        _elements = []
-        for _e in self.__dict__.values():
-            _elements += _e
-        return "".join([str(_e) for _e in _elements if _e.type != "Source"])
+        return "".join([str(_e) for _e in self._get_elements() if _e.type != "Source"])
 
     def to_text(self) -> str:
         """获取消息链中的文本消息
@@ -95,8 +92,14 @@ class MessageChain(BaseModel):
         """
         return self.fetch("Plain") and "".join([_plain.text for _plain in self.fetch("Plain")])
 
+    def _get_elements(self) -> List[ElementBase]:
+        _elements = []
+        for _e in self.__dict__.values():
+            _elements += _e
+        return _elements
+
     def __str__(self) -> str:
-        return f"".join(self.__dict__.values())
+        return f"".join([_e.__str__() for _e in self._get_elements()])
 
 
 class Quote(ElementBase):
