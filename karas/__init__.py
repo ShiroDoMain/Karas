@@ -579,13 +579,6 @@ class Yurine(object):
             return None
         return _data.get("data")
 
-    # def run(self, f: Awaitable):
-    #     def _run_wrapper(*args, **kwargs):
-    #         if not self.is_running:
-    #             self.start()
-    #         return self.loop.run_until_complete(f(*args, **kwargs))
-    #     return _run_wrapper()
-
     def run_forever(self) -> None:
         """挂起"""
         if not self.is_running:
@@ -627,7 +620,8 @@ class Yurine(object):
 
     async def __aenter__(self):
         self.logging.debug("enter service")
-        self.start()
+        if not self.is_running:
+            self.start()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -636,7 +630,8 @@ class Yurine(object):
         self.logging.info("exit")
 
     def __enter__(self):
-        self.start()
+        if not self.is_running:
+            self.start()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):

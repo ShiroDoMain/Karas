@@ -1,13 +1,19 @@
+import inspect
 from typing import Awaitable, Callable, Optional, Union
 import sys
 import aiohttp
 import traceback
+from functools import wraps
 
 
 def error_throw(func:Awaitable):
+    @wraps(func)
     async def _wrapper(*args, **kwargs):
         try:
-            _response = await func(*args, **kwargs)
+            if inspect.iscoroutine(func):
+                _response = await func(*args, **kwargs)
+            else:
+                _response = func(*args, **kwargs)
         except Exception as e:
             _,_,tb = sys.exc_info()
             traceback.print_tb(tb,limit=10)
@@ -19,6 +25,7 @@ def error_throw(func:Awaitable):
 
 def echo_receiver(ws: aiohttp.ClientWebSocketResponse, _return: str = None):
     def wrapper(func):
+        @wraps(func)
         async def decorator(*args, **kwargs):
             await func(*args, **kwargs)
             response = await ws.receive_json()
