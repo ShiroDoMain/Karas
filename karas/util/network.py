@@ -1,20 +1,21 @@
-from typing import Optional, Union
+from typing import Awaitable, Callable, Optional, Union
 import sys
 import aiohttp
 import traceback
 
 
-def error_throw(func):
-    async def wrapper(*args, **kwargs):
+def error_throw(func:Awaitable):
+    async def _wrapper(*args, **kwargs):
         try:
             _response = await func(*args, **kwargs)
         except Exception as e:
             _,_,tb = sys.exc_info()
-            traceback.print_tb(tb)
+            traceback.print_tb(tb,limit=10)
+            raise
         else:
             return _response
-    return wrapper
-
+    return _wrapper
+    
 
 def echo_receiver(ws: aiohttp.ClientWebSocketResponse, _return: str = None):
     def wrapper(func):

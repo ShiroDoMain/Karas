@@ -1,6 +1,6 @@
 from aiohttp import ClientSession
 import asyncio
-from typing import Dict, List, Optional, Union, AsyncGenerator
+from typing import Awaitable, Coroutine, Dict, List, Optional, Union, AsyncGenerator
 from .chain import MessageChain
 from .Sender import Friend, Group, Member, Stranger, ReceptorBase
 from .messages import MessageBase
@@ -42,7 +42,7 @@ class Karas(object):
         if isBotEvent:
             _logger.info(_event.__str__())
         elif _event:
-            await cls.executor(_event)
+            await cls._executor(_event)
         yield
 
     @classmethod
@@ -52,7 +52,7 @@ class Karas(object):
         return _event
 
     @classmethod
-    async def executor(cls, message: Union["MessageBase", "EventBase"]) -> Optional[str]:
+    async def _executor(cls, message: Union["MessageBase", "EventBase"] = None) -> Optional[str]:
         if cls.listeners.get(message.type) is None:
             return
         for listener in cls.listeners.get(message.type):
@@ -105,6 +105,9 @@ class Yurine(object):
             loggerLevel, qq, filename=logFileName, logFile=logToFile)
         self.loop = loop or asyncio.get_event_loop()
         self.karas = karas or Karas
+
+        self.is_running = False
+        self.start()
 
     @error_throw
     async def _initialization(self) -> None:
@@ -198,10 +201,11 @@ class Yurine(object):
             registerEvent = registerEvent if isinstance(
                 registerEvent, str) else registerEvent.type
 
-        def register_decorator(Callable):
+        def register_decorator(Callable: Awaitable):
             def register_wrapper(*args, **kwargs):
                 self.logging.debug(
-                    f"register listener [{Callable.__name__}] for Event[{registerEvent}]")
+                    f"register listener [{Callable.__name__}] for Event[{registerEvent}]"
+                )
                 if Karas.listeners.get(registerEvent):
                     Karas.listeners.get(registerEvent).apeend(Callable)
                 else:
@@ -213,6 +217,12 @@ class Yurine(object):
 
     @error_throw
     async def accept(self, requestEvent: "RequestEvent", message: str = None) -> None:
+        """接受该请求事件
+
+        Args:
+            requestEvent (RequestEvent): 一个请求事件
+            message (str, optional): 同意该请求时附带的消息. Defaults to None.
+        """
         requestEvent.message = message
         await self.ws.send_json(
             wrap_data_json(
@@ -349,6 +359,11 @@ class Yurine(object):
 
     @error_throw
     async def recall(self, message: Union[Source, int]):
+        """消息撤回
+
+        Args:
+            message (Union[Source, int]): 要撤回的消息，可以是一个Source或者消息Id
+        """
         await self.ws.send_json(
             wrap_data_json(
                 command="recall",
@@ -397,6 +412,7 @@ class Yurine(object):
             self.logging.error(f"{echo}")
         return echo.get("data").get("code")
 
+    @error_throw
     async def fetchFriendList(self) -> Optional[List[Friend]]:
         """
         获取好友列表
@@ -406,10 +422,10 @@ class Yurine(object):
                 command="friendList"
             )
         )
-        echo = await self.ws.receive_json()
-        data = echo.get("data")
+        data = await self._raise_status()
         return data and [Friend(**friend) for friend in data.get("data")]
 
+    @error_throw
     async def fetchFriendProfile(self, friend: Union[Friend, int]) -> Optional[Friend]:
         """
         获取好友详细资料
@@ -422,10 +438,10 @@ class Yurine(object):
                 }
             )
         )
-        echo = await self.ws.receive_json()
-        friend = echo.get("data")
+        friend = await self._raise_status()
         return friend and FriendProfile(**friend)
 
+    @error_throw
     async def fetchGroupList(self) -> Optional[List[Group]]:
         """
         获取群列表
@@ -435,10 +451,10 @@ class Yurine(object):
                 command="groupList"
             )
         )
-        echo = await self.ws.receive_json()
-        data = echo.get("data")
+        data = await self._raise_status()
         return data and [Group(**group) for group in data.get("data")]
 
+    @error_throw
     async def fetchMemberList(self, group: Union[Group, int]) -> Optional[List[Member]]:
         """
         获取群成员列表
@@ -451,11 +467,15 @@ class Yurine(object):
                 }
             )
         )
-        echo = await self.ws.receive_json()
-        data = echo.get("data")
+        data = await self._raise_status()
         return data and [Member(**member) for member in data.get("data")]
 
-    async def fetchMemberProfile(self, group: Union[Group, int], member: Union[Member, int]) -> Optional[MemberProfile]:
+    @error_throw
+    async def fetchMemberProfile(
+        self,
+        group: Union[Group, int],
+        member: Union[Member, int]
+    ) -> Optional[MemberProfile]:
         """
         获取成员详细资料
         """
@@ -468,10 +488,10 @@ class Yurine(object):
                 }
             )
         )
-        echo = await self.ws.receive_json()
-        data = echo.get("data")
+        data = await self._raise_status()
         return data and MemberProfile(**data)
 
+    @error_throw
     async def fetchBotProfile(self) -> Optional[BotProfile]:
         """
         获取bot详细资料
@@ -481,10 +501,10 @@ class Yurine(object):
                 command="botProfile"
             )
         )
-        echo = await self.ws.receive_json()
-        data = echo.get("data")
+        data = await self._raise_status()
         return data and BotProfile(**data)
 
+    @error_throw
     async def fetchUserProfile(self, target: int) -> Optional[UserProfile]:
         """
         获取用户详细资料
@@ -497,9 +517,49 @@ class Yurine(object):
                 }
             )
         )
-        echo = await self.ws.receive_json()
-        data = echo.get("data")
+        data = await self._raise_status()
         return data and UserProfile(**data)
+
+    async def fetchFileList(
+        self,
+        id: str = "",
+        path: str = None,
+        target: Union[int, Group, Friend] = None,
+        withDownloadInfo: bool = False,
+        offset: int = 1,
+        size: int = 10,
+    ) -> Optional[List[File]]:
+        """获取文件列表"""
+        await self.ws.send_json(
+            wrap_data_json(
+                command="file_list",
+                content={
+                    "id": id,
+                    "path": path,
+                    "target": target,
+                    "withDownloadInfo": withDownloadInfo,
+                    "offset": offset,
+                    "size": size
+                }
+            )
+        )
+        data = await self._raise_status()
+        return data and [File(**file) for file in data]
+
+    async def fetchFileInfo():
+        """file_info"""
+
+    async def fileMkdir():
+        """file_mkdir"""
+
+    async def fileDelete():
+        """file_delete"""
+
+    async def fileMove():
+        """file_move"""
+
+    async def fileRename():
+        """file_rename"""
 
     async def _raise_task_cancel(self, _task: asyncio.Task) -> None:
         """取消当前事件循环中的任务"""
@@ -514,13 +574,22 @@ class Yurine(object):
         # TODO
         _data = await self.ws.receive_json()
         _status_code = _data.get("code")
-        if not _status_code:
-            self.logging.error()
+        if _status_code:
+            self.logging.error(_data.get("msg"))
+            return None
+        return _data.get("data")
+
+    # def run(self, f: Awaitable):
+    #     def _run_wrapper(*args, **kwargs):
+    #         if not self.is_running:
+    #             self.start()
+    #         return self.loop.run_until_complete(f(*args, **kwargs))
+    #     return _run_wrapper()
 
     def run_forever(self) -> None:
         """挂起"""
-        self.loop.run_until_complete(self._initialization())
-        self.loop.create_task(self._receiver())
+        if not self.is_running:
+            self.start()
         try:
             self.loop.run_forever()
         except KeyboardInterrupt:
@@ -529,10 +598,12 @@ class Yurine(object):
         finally:
             self.close()
 
-    def start(self):
-        pass
+    def start(self) -> None:
+        self.loop.run_until_complete(self._initialization())
+        self.loop.create_task(self._receiver())
+        self.is_running = True
 
-    def close(self):
+    def close(self) -> None:
         """关闭"""
         if self.loop.is_closed():
             return
@@ -540,7 +611,7 @@ class Yurine(object):
         self.loop.close()
         self.logging.debug(f"loop closed is  {self.loop.is_closed()}")
 
-    async def stop(self):
+    async def stop(self) -> int:
         """停止所有运行中的事件"""
         for _task in asyncio.all_tasks(self.loop):
             self.logging.debug(f"try canceling <task {id(_task)}>")
@@ -556,7 +627,7 @@ class Yurine(object):
 
     async def __aenter__(self):
         self.logging.debug("enter service")
-        await self._initialization()
+        self.start()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -565,7 +636,7 @@ class Yurine(object):
         self.logging.info("exit")
 
     def __enter__(self):
-        self.loop.run_until_complete(self._initialization())
+        self.start()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):

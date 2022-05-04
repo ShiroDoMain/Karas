@@ -1,5 +1,6 @@
 from enum import Enum
 from typing import Any, BinaryIO, Dict, Optional, Union
+from .permission import Permission
 
 from .util import BaseModel
 
@@ -203,10 +204,52 @@ class MusicShare(ElementBase):
         super().__init__(**kwargs)
 
 
-class File(ElementBase):
+class FileDownloadInfo(ElementBase):
+    """
+    sha1    str	文件sha1校验
+    md5	str	文件md5校验
+    url	str	文件下载url
+
+
+    Args:
+        ElementBase (_type_): _description_
+    """
+    sha1: str
+    md5: str
+    downloadTimes: int
+    uploaderId: int
+    uploadTime: int
+    lastModifyTime: int
+    url: str
+
+
+class UploaderInfo(ElementBase):
     id: int
     name: str
+    permission: Permission
+
+
+class File(ElementBase):
+    """
+    name    str         	文件名  
+    id	    str	            文件ID  
+    parent	File	        文件对象, 递归类型. null 为存在根目录  
+    contact	UploaderInfo	群信息或好友信息  
+    contact	UploaderInfo	群信息或好友信息  
+    isFile	bool    	    是否文件  
+    isDictionary	bool	是否文件夹(弃用)  
+    isDirectory	    bool    	是否文件夹  
+    """
+    id: str
+    name: str
     size: int
+    path: str
+    parent: Optional["File"]
+    contact: FileDownloadInfo
+    isFile: bool
+    isDictionary: bool
+    isDirectory: bool
+    downloadInfo: FileDownloadInfo
 
     def __init__(self, **kwargs):
         self.type: str = "File"
