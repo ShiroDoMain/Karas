@@ -278,7 +278,7 @@ class Yurine(object):
             if not isinstance(Elements, MessageChain) else Elements.parse_to_json()
         content = {
             "group": group if isinstance(group, int) else group.id,
-            "quote": quote.id,
+            "quote": quote and quote.id,
             "messageChain": _chain
         }
         await self.ws.send_json(
