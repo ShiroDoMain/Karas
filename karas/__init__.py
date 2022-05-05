@@ -114,6 +114,7 @@ class Yurine(object):
         self.karas = karas or Karas
 
         self.is_running = False
+        self._receiver_is_running = False
         self.start()
 
     @error_throw
@@ -188,6 +189,7 @@ class Yurine(object):
     @error_throw
     async def _receiver(self) -> None:
         """事件监听器"""
+        self._receiver_is_running = True
         while True:
             _receive_data: dict = await self.ws.receive_json()
             if _receive_data.get("syncId") == "-1":
@@ -276,11 +278,7 @@ class Yurine(object):
         """
         _chain = [(await self._element_check(_e, type="group")) for _e in Elements] \
             if not isinstance(Elements, MessageChain) else Elements.parse_to_json()
-        content = {
-            "group": group if isinstance(group, int) else group.id,
-            "quote": quote and quote.id,
-            "messageChain": _chain
-        }
+        content = await _build_content_json("group", group, quote, _chain)
         await self.ws.send_json(
             wrap_data_json(
                 syncId="sendGroupMessage",
@@ -590,6 +588,9 @@ class Yurine(object):
         """挂起"""
         if not self.is_running:
             self.start()
+        if not self._receiver_is_running:
+            self.loop.create_task(self._receiver())
+            self.logging.info(f"receiver created")
         try:
             self.loop.run_forever()
         except KeyboardInterrupt:
@@ -604,8 +605,6 @@ class Yurine(object):
         self.logging.info(f"initialization......")
         _code = self.loop.run_until_complete(self._initialization())
         self.logging.debug(f"initialization {_code}")
-        self.loop.create_task(self._receiver())
-        self.logging.info(f"receiver created")
         self.is_running = True
         return 0
 
@@ -613,7 +612,7 @@ class Yurine(object):
         """关闭"""
         if self.loop.is_closed():
             return
-        self.loop.run_until_complete(self.stop())
+        self.stop()
         self.loop.close()
         self.logging.debug(f"loop closed is  {self.loop.is_closed()}")
 

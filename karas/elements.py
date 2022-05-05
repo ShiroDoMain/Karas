@@ -20,8 +20,9 @@ class At(ElementBase):
     target: int
     display: str
 
-    def __init__(self, **kwargs):
+    def __init__(self, target:int, **kwargs):
         self.type: str = "At"
+        self.target = target
         super().__init__(**kwargs)
 
 
