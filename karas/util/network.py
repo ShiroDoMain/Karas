@@ -10,11 +10,12 @@ def error_throw(func:Awaitable):
     @wraps(func)
     async def _wrapper(*args, **kwargs):
         try:
-            # _response = await func(*args, **kwargs)
             if inspect.iscoroutinefunction(func):
                 _response = await func(*args, **kwargs)
             else:
                 _response = func(*args, **kwargs)
+        except RuntimeError as _re:
+            raise
         except Exception as e:
             _,_,tb = sys.exc_info()
             traceback.print_tb(tb,limit=10)

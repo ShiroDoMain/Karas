@@ -107,8 +107,6 @@ class Yurine(object):
         self.session = session
         self.ws = None
 
-        self.offline = False
-
         self.route = URL_Route(self.url)
         self.logging = Logging(
             loggerLevel, qq, filename=logFileName, logFile=logToFile)
@@ -127,6 +125,7 @@ class Yurine(object):
             await self._connect()
             self.logging.info("Account verify success")
             self.logging.debug(f"got verifyKey {self.sessionKey}")
+        return 0
 
     @error_throw
     async def _release(self):
@@ -219,9 +218,7 @@ class Yurine(object):
                     Karas.listeners.get(registerEvent).apeend(Callable)
                 else:
                     Karas.listeners[registerEvent] = [Callable, ]
-
             return register_wrapper()
-
         return register_decorator
 
     @error_throw
@@ -604,8 +601,11 @@ class Yurine(object):
     def start(self) -> int:
         if self.is_running:
             return 0
-        self.loop.run_until_complete(self._initialization())
+        self.logging.info(f"initialization......")
+        _code = self.loop.run_until_complete(self._initialization())
+        self.logging.debug(f"initialization {_code}")
         self.loop.create_task(self._receiver())
+        self.logging.info(f"receiver created")
         self.is_running = True
         return 0
 
