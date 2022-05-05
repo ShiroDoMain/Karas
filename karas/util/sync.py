@@ -1,7 +1,6 @@
 import asyncio
 import functools, threading, inspect
 import os
-os.system("clear")
 
 class AsyncClass:
     @classmethod
@@ -11,10 +10,9 @@ class AsyncClass:
 def async_to_sync(obj, name):
     function = getattr(obj, name)
     main_loop = asyncio.get_event_loop()
-    print(main_loop.is_running())
 
     @functools.wraps(function)
-    def async_to_sync_wrap(*args, **kwargs):
+    def _wrap(*args, **kwargs):
         coroutine = function(*args, **kwargs)
 
         try:
@@ -37,9 +35,9 @@ def async_to_sync(obj, name):
                     return coro_wrapper()
                 else:
                     return asyncio.run_coroutine_threadsafe(coroutine, main_loop).result()
-    setattr(obj, name, async_to_sync_wrap)
+    setattr(obj, name, _wrap)
 
-def wrap(cls):
+def async_to_sync_wrap(cls):
     attrs = [attr for attr in cls.__dict__ if not attr.startswith("_") and (inspect.iscoroutinefunction(getattr(cls,attr)) or inspect.isasyncgenfunction(getattr(cls,attr)))]
     for attr in attrs:
         async_to_sync(cls,attr)

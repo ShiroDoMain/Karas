@@ -1,6 +1,9 @@
-from aiohttp import ClientSession
+import inspect
+from aiohttp import ClientSession, ClientWebSocketResponse
 import asyncio
 from typing import Awaitable, Coroutine, Dict, List, Optional, Union, AsyncGenerator
+
+from .util.sync import async_to_sync_wrap
 from .chain import MessageChain
 from .Sender import Friend, Group, Member, Stranger, ReceptorBase
 from .messages import MessageBase
@@ -67,9 +70,13 @@ class Karas(object):
             for k, t in _func_params.items():
                 if t in _types:
                     _o[k] = _message_dict[_reversed[t]]
-            await listener(**_o)
+            if inspect.iscoroutinefunction(listener):
+                await listener(**_o)
+            else:
+                listener(**_o)
 
 
+@async_to_sync_wrap
 class Yurine(object):
     """
     Yurine:
@@ -87,6 +94,7 @@ class Yurine(object):
             protocol: str = "ws",
             sessionKey: str = None,
             session: ClientSession = None,
+            ws: ClientWebSocketResponse = None,
             loggerLevel: str = "INFO",
             logToFile=False,
             logFileName: str = None
@@ -97,6 +105,7 @@ class Yurine(object):
         self.verifyKey = verifyKey
         self.sessionKey = sessionKey
         self.session = session
+        self.ws = None
 
         self.offline = False
 
@@ -281,7 +290,7 @@ class Yurine(object):
                 command="sendGroupMessage",
                 content=content
             ))
-        self.logging.info(f"Bot => {[str(_e) for _e in _chain]}")
+        self.logging.info(f"bot <= {MessageChain(*_chain).to_str()}")
         echo = await self.ws.receive_json()
         return echo.get("messageId")
 
@@ -314,7 +323,7 @@ class Yurine(object):
                 content=content
             )
         )
-        self.logging.info(f"Bot => {[str(_e) for _e in _chain]}")
+        self.logging.info(f"Bot <= {MessageChain(*_chain).to_str()}")
         echo = await self.ws.receive_json()
         return echo.get("messageId")
 
@@ -354,6 +363,7 @@ class Yurine(object):
                 content=content
             )
         )
+        self.logging.info(f"bot <= {MessageChain(*_chain).to_str()}")
         echo = await self.ws.receive_json()
         return echo.get("messageId")
 
@@ -591,10 +601,13 @@ class Yurine(object):
         finally:
             self.close()
 
-    def start(self) -> None:
+    def start(self) -> int:
+        if self.is_running:
+            return 0
         self.loop.run_until_complete(self._initialization())
         self.loop.create_task(self._receiver())
         self.is_running = True
+        return 0
 
     def close(self) -> None:
         """关闭"""
@@ -609,10 +622,10 @@ class Yurine(object):
         for _task in asyncio.all_tasks(self.loop):
             self.logging.debug(f"try canceling <task {id(_task)}>")
             await self._raise_task_cancel(_task)
-        if not self.ws.closed:
+        if self.ws is not None and not self.ws.closed:
             await self.ws.close()
             self.logging.info(f"websocket closed")
-        if not self.session.closed:
+        if self.session is not None and not self.session.closed:
             # await self._release()
             await self.session.close()
             self.logging.info("Session closed")

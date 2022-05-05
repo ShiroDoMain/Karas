@@ -10,7 +10,8 @@ def error_throw(func:Awaitable):
     @wraps(func)
     async def _wrapper(*args, **kwargs):
         try:
-            if inspect.iscoroutine(func):
+            # _response = await func(*args, **kwargs)
+            if inspect.iscoroutinefunction(func):
                 _response = await func(*args, **kwargs)
             else:
                 _response = func(*args, **kwargs)
