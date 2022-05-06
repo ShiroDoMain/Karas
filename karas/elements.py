@@ -1,5 +1,6 @@
 from enum import Enum
 from typing import Any, BinaryIO, Dict, Optional, Union
+
 from .permission import Permission
 
 from .util import BaseModel
@@ -20,7 +21,7 @@ class At(ElementBase):
     target: int
     display: str
 
-    def __init__(self, target:int, **kwargs):
+    def __init__(self, target: int, **kwargs):
         self.type: str = "At"
         self.target = target
         super().__init__(**kwargs)
@@ -252,8 +253,12 @@ class File(ElementBase):
     isDirectory: bool
     downloadInfo: FileDownloadInfo
 
-    def __init__(self, **kwargs):
+    def __init__(self, parent, **kwargs):
         self.type: str = "File"
+        if parent:
+            self.parent = File(**parent)
+        else:
+            self.parent = parent
         super().__init__(**kwargs)
 
 
@@ -288,6 +293,55 @@ class UserProfile(ElementBase):
 
 class BotProfile(ElementBase):
     """Bot资料"""
+
+
+class GroupConfig(ElementBase):
+    """
+    name            	群名
+
+    announcement	    群公告
+    
+    confessTalk         是否开启坦白说
+    
+    allowMemberInvite	是否允许群员邀请
+    
+    autoApprove	        是否开启自动审批入群
+    
+    anonymousChat	    是否允许匿名聊天
+    
+    """
+    name: str
+    announcement: str
+    confessTalk: bool
+    allowMemberInvite: bool
+    autoApprove: bool
+    anonymousChat: bool
+
+    def __init__(
+        self,
+        name: str = None,
+        announcement: str = None,
+        confessTalk: bool = None,
+        allowMemberInvite: bool = None,
+        autoApprove: bool = None,
+        anonymousChat: bool = None,
+        **kws,
+    ) -> None:
+        super().__init__(**kws)
+        self.name = name
+        self.announcement = announcement
+        self.confessTalk = confessTalk
+        self.allowMemberInvite = allowMemberInvite
+        self.autoApprove = autoApprove
+        self.anonymousChat = anonymousChat
+
+
+class MemberInfo(ElementBase):
+    name: str
+    specialTitle: str
+
+    def __init__(self, **kws) -> None:
+        super().__init__(**kws)
 
 
 class MessageElementEnum(Enum):

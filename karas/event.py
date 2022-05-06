@@ -23,7 +23,7 @@ __events__ = {
 class EventBase(BaseModel):
     type: str
     selfEvent: bool = False
-    fromId:int = 0
+    fromId: int = 0
 
     def __str__(self) -> str:
         return f"{self.__dict__}"
@@ -76,11 +76,6 @@ class RequestEvent(EventBase):
     def reject(self):
         self.operate = 1
         return __dict__
-
-    @property
-    def reject_block(self):
-        self.operate = 2
-        return self.__dict__
 
 
 class BotOnlineEvent(BotEventBase):
@@ -318,18 +313,39 @@ class MemberHonorChangeEvent(GroupEventBase):
 class NewFriendRequestEvent(RequestEvent):
     """添加好友申请"""
     type: str = "NewFriendRequestEvent"
+    command: str = "resp_newFriendRequestEvent"
 
+    @property
+    def reject_block(self):
+        self.operate = 2
+        return __dict__
 
 class MemberJoinRequestEvent(RequestEvent):
     """用户入群申请（Bot需要有管理员权限）"""
     type: str = "MemberJoinRequestEvent"
     groupName: str
+    command: str = "resp_memberJoinRequestEvent"
 
+    @property
+    def ignore(self):
+        self.operate = 2
+        return self.__dict__
+
+    @property
+    def reject_block(self):
+        self.operate = 3
+        return self.__dict__
+
+    @property
+    def ignore_block(self):
+        self.operate = 4
+        return self.__dict__
 
 class BotInvitedJoinGroupRequestEvent(RequestEvent):
     """Bot被邀请入群申请"""
     type: str = "BotInvitedJoinGroupRequestEvent"
     groupName: str
+    command = "resp_botInvitedJoinGroupRequestEvent"
 
 
 class OtherClientOnlineEvent(EventBase):

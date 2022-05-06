@@ -17,7 +17,8 @@ class MessageChain(BaseModel):
                 setattr(self, _element_type, [_attr_obj])
 
     def parse_to_json(self) -> list:
-        """将消息链内部的消息对象转换成可发送的数组形式
+        """
+        将消息链内部的消息对象转换成可发送的数组形式
         """
         _elements = []
         for attr in self.__dict__.keys():
@@ -133,3 +134,4 @@ class ForwardMessage(ElementBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.type = "ForwardMessage"
+

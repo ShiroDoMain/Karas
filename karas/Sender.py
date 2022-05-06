@@ -105,6 +105,30 @@ class Client(ReceptorBase):
     platform: str
 
 
+class Announcement(ReceptorBase):
+    """公告
+    content                     内容
+
+    senderId                    发布者账号
+
+    fid                         群公告id
+
+    allConfirmed                是否所有群成员已确认
+
+    confirmedMembersCount       确认群成员人数
+
+    publicationTime             发布时间
+
+    """
+    group:Group
+    content: str
+    senderId: int
+    fid: int
+    allConfirmed: bool
+    confirmedMembersCount: int
+    publicationTime: int
+
+
 class ElementsEnum(Enum):
     friend: "Friend" = Friend
     group: "Group" = Group
