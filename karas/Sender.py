@@ -107,14 +107,18 @@ class Client(ReceptorBase):
 
 class Announcement(ReceptorBase):
     """公告
+    content                     内容
 
-    Args:
-    content 
     senderId                    发布者账号
-    fid 
+
+    fid                         群公告id
+
     allConfirmed                是否所有群成员已确认
+
     confirmedMembersCount       确认群成员人数
+
     publicationTime             发布时间
+
     """
     group:Group
     content: str

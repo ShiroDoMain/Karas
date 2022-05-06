@@ -298,11 +298,17 @@ class BotProfile(ElementBase):
 class GroupConfig(ElementBase):
     """
     name            	群名
+
     announcement	    群公告
+    
     confessTalk         是否开启坦白说
+    
     allowMemberInvite	是否允许群员邀请
+    
     autoApprove	        是否开启自动审批入群
+    
     anonymousChat	    是否允许匿名聊天
+    
     """
     name: str
     announcement: str
