@@ -7,3 +7,8 @@ test*.*
 /mirai*
 .DS_Store
 /logs
+
+/dist
+*.egg-info
+/build
+build*
