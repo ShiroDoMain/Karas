@@ -1,6 +1,5 @@
 import asyncio
 import functools, threading, inspect
-import os
 
 class AsyncClass:
     @classmethod

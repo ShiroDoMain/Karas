@@ -1,9 +1,9 @@
 from enum import Enum
 from typing import Any, BinaryIO, Dict, Optional, Union
 
-from .permission import Permission
+from karas.permission import Permission
 
-from .util import BaseModel
+from karas.util import BaseModel
 
 
 class ElementBase(BaseModel):

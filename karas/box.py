@@ -1,8 +1,8 @@
 """
 可以在这里直接导入大部分需要使用的工具
 """
-from . import Yurine
-from .elements import (
+from karas import Yurine
+from karas.elements import (
     At,
     AtAll,
     Face,
@@ -26,7 +26,7 @@ from .elements import (
     UserProfile,
     BotProfile
 )
-from .Sender import (
+from karas.Sender import (
     Group,
     Sender,
     Friend,
@@ -36,9 +36,9 @@ from .Sender import (
     Subject,
     Client,
 )
-from .chain import MessageChain, Quote, ForwardMessage
-from .permission import AdministartorPermission, MemberPermission, OwnerPermission
-from .event import (
+from karas.chain import MessageChain, Quote, ForwardMessage
+from karas.permission import AdministartorPermission, MemberPermission, OwnerPermission
+from karas.event import (
     RequestEvent,
     BotOnlineEvent,
     BotOfflineEventActive,
@@ -78,7 +78,7 @@ from .event import (
     CommandExecutedEvent,
 )
 
-from .messages import (
+from karas.messages import (
     GroupMessage,
     FriendMessage,
     TempMessage,

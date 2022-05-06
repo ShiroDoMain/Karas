@@ -1,11 +1,11 @@
 from enum import Enum
 from typing import Optional, Union
 
-from .util import BaseModel
+from karas.util import BaseModel
 
-from .Sender import Client, Friend, Group, Member, Operator, Subject
-from .messages import MessageBase, MessageEnum
-from .permission import Permission
+from karas.Sender import Client, Friend, Group, Member, Operator, Subject
+from karas.messages import MessageBase, MessageEnum
+from karas.permission import Permission
 
 __events__ = {
     "messageEvent":

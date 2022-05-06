@@ -53,12 +53,13 @@ def wrap_data_json(
     Returns:
         dict: _description_
     """
-    content = {_K:_V.id if isinstance(_V,ReceptorBase) else _V for _K,_V in content.items()}
+    if content is not None:
+        content = {_K:_V.id if isinstance(_V,ReceptorBase) else _V for _K,_V in content.items()}
     return {
         "syncId": syncId,
         "command": command,
         "subCommand": subCommand,
-        "content": {} if content is None else content
+        "content": content
     }
 
 

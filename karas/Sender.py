@@ -1,8 +1,8 @@
 from enum import Enum
 from typing import Optional, Union
-from .util import BaseModel
-from .chain import MessageChain
-from .permission import Permission, PermissionEnum
+from karas.util import BaseModel
+from karas.chain import MessageChain
+from karas.permission import Permission, PermissionEnum
 
 """
 由于api统一发送者为sender，所以需要在事件里对sender进行区分

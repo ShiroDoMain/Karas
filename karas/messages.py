@@ -2,11 +2,11 @@ from email import message
 from enum import Enum
 from typing import Union
 
-from .util import BaseModel
+from karas.util import BaseModel
 
-from .Sender import Client, Group, Member, Sender, Friend, Subject
-from .chain import MessageChain
-from .elements import ElementBase
+from karas.Sender import Client, Group, Member, Sender, Friend, Subject
+from karas.chain import MessageChain
+from karas.elements import ElementBase
 
 
 class MessageBase(BaseModel):

@@ -6,10 +6,11 @@
 ##  Version  
 ![Mirai-API-API-Version](https://img.shields.io/badge/mirai--http--api-2.5.0-brightgreen.svg?style=plastic)
 ![python-Version](https://img.shields.io/badge/python->=3.7-brightgreen.svg?style=plastic)  
+![karas-Version](https://img.shields.io/badge/karas-0.1.0-brightgreen.svg?style=plastic)    
 ## 使用  
-- 首先你需要安装requirements中的依赖  
+- 使用pip安装本项目  
 ```shell script
-pip3 install -r requirements.txt
+pip3 install karas_py
 ```  
 - 一个群聊复读机实例:  
 ```python

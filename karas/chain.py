@@ -1,6 +1,6 @@
-from .util import BaseModel
-from .elements import ElementBase
-from .elements import MessageElementEnum
+from karas.util import BaseModel
+from karas.elements import ElementBase
+from karas.elements import MessageElementEnum
 from typing import List, Any, Dict, Optional, Union
 
 

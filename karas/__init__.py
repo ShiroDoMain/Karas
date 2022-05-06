@@ -5,19 +5,19 @@ from aiohttp import ClientSession, ClientWebSocketResponse
 import asyncio
 from typing import Awaitable, Coroutine, Dict, List, Optional, Union, AsyncGenerator
 
-from .util.sync import async_to_sync_wrap
-from .chain import MessageChain
-from .Sender import Friend, Group, Member, Stranger, ReceptorBase, Announcement
-from .messages import MessageBase
-from .event import Auto_Switch_Event, EventBase, MemberJoinRequestEvent, NewFriendRequestEvent, RequestEvent, Event, NudgeEvent
-from .elements import ElementBase, File, FlashImage, GroupConfig, Image, MemberInfo, Plain, Source, Voice, FriendProfile, MemberProfile, \
+from karas.util.sync import async_to_sync_wrap
+from karas.chain import MessageChain
+from karas.Sender import Friend, Group, Member, Stranger, ReceptorBase, Announcement
+from karas.messages import MessageBase
+from karas.event import Auto_Switch_Event, EventBase, MemberJoinRequestEvent, NewFriendRequestEvent, RequestEvent, Event, NudgeEvent
+from karas.elements import ElementBase, File, FlashImage, GroupConfig, Image, MemberInfo, Plain, Source, Voice, FriendProfile, MemberProfile, \
     BotProfile, UserProfile
-from .exceptions import InvalidArgumentError, VerifyError
-from .util.Logger import Logging
-from .util.network import error_throw, URL_Route, wrap_data_json
+from karas.exceptions import InvalidArgumentError, VerifyError
+from karas.util.Logger import Logging
+from karas.util.network import error_throw, URL_Route, wrap_data_json
 
 
-__version__ = "0.1"
+__version__ = "0.0.1"
 
 
 async def _build_content_json(
@@ -1300,14 +1300,14 @@ class Yurine(object):
 
     async def _raise_status(self) -> Dict:
         # TODO
-        _data = await self.ws.receive_json()
-        _json_data = _data.get("data")
-        _status_code = _json_data.get("code")
-        if _status_code:
-            self.logging.error(_json_data.get("msg"))
+        _json_data = await self.ws.receive_json()
+        _data = _json_data.get("data")
+        _status_code = _json_data.get("code") or _data.get("code")
+        if _status_code is not None and _status_code != 0:
+            self.logging.error(_data.get("msg"))
             return None
-        # print(_json_data)
-        return _json_data.get("data") or _data.get("msg")
+        print(_data)
+        return _data.get("data") and _data or _data.get("msg")
 
     def run_forever(self) -> None:
         """挂起"""
