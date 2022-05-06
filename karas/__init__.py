@@ -1,14 +1,16 @@
+from asyncio.log import logger
 import inspect
+from tokenize import group
 from aiohttp import ClientSession, ClientWebSocketResponse
 import asyncio
 from typing import Awaitable, Coroutine, Dict, List, Optional, Union, AsyncGenerator
 
 from .util.sync import async_to_sync_wrap
 from .chain import MessageChain
-from .Sender import Friend, Group, Member, Stranger, ReceptorBase
+from .Sender import Friend, Group, Member, Stranger, ReceptorBase, Announcement
 from .messages import MessageBase
-from .event import Auto_Switch_Event, EventBase, RequestEvent, Event, NudgeEvent
-from .elements import ElementBase, File, FlashImage, Image, Plain, Source, Voice, FriendProfile, MemberProfile, \
+from .event import Auto_Switch_Event, EventBase, MemberJoinRequestEvent, NewFriendRequestEvent, RequestEvent, Event, NudgeEvent
+from .elements import ElementBase, File, FlashImage, GroupConfig, Image, MemberInfo, Plain, Source, Voice, FriendProfile, MemberProfile, \
     BotProfile, UserProfile
 from .exceptions import InvalidArgumentError, VerifyError
 from .util.Logger import Logging
@@ -224,21 +226,124 @@ class Yurine(object):
         return register_decorator
 
     @error_throw
-    async def accept(self, requestEvent: "RequestEvent", message: str = None) -> None:
+    async def accept(
+        self,
+        requestEvent: "RequestEvent",
+        message: str = None
+    ) -> None:
         """接受该请求事件
 
         Args:
             requestEvent (RequestEvent): 一个请求事件
             message (str, optional): 同意该请求时附带的消息. Defaults to None.
         """
-        requestEvent.message = message
-        await self.ws.send_json(
-            wrap_data_json(
-                syncId="accept",
-                command=requestEvent.command,
-                content=requestEvent.accept
+        if not isinstance(requestEvent, RequestEvent):
+            logger.error("非法请求")
+        else:
+            requestEvent.message = message
+            await self.ws.send_json(
+                wrap_data_json(
+                    syncId="accept",
+                    command=requestEvent.command,
+                    content=requestEvent.accept
+                )
             )
-        )
+
+    @error_throw
+    async def reject(
+        self,
+        requestEvent: "RequestEvent",
+        message: str = None
+    ) -> None:
+        """拒绝该请求事件
+
+        Args:
+            requestEvent (RequestEvent): 一个请求事件
+            message (str, optional): 拒绝该请求时附带的消息. Defaults to None.
+        """
+        if not isinstance(requestEvent, RequestEvent):
+            logger.error("非法请求")
+        else:
+            requestEvent.message = message
+            await self.ws.send_json(
+                wrap_data_json(
+                    syncId="reject",
+                    command=requestEvent.command,
+                    content=requestEvent.reject
+                )
+            )
+    
+    @error_throw
+    async def reject_block(
+        self,
+        requestEvent: Union[NewFriendRequestEvent,MemberJoinRequestEvent],
+        message: str = None
+    ) -> None:
+        """拒绝添加好友或者入群并添加黑名单，不再接收该用户的好友申请
+
+        Args:
+            requestEvent (RequestEvent): 一个请求事件
+            message (str, optional): 拒绝该请求时附带的消息. Defaults to None.
+        """
+        if not isinstance(requestEvent, [NewFriendRequestEvent,MemberJoinRequestEvent]):
+            logger.error("非法请求")
+        else:
+            requestEvent.message = message
+            await self.ws.send_json(
+                wrap_data_json(
+                    syncId="reject",
+                    command=requestEvent.command,
+                    content=requestEvent.reject_block
+                )
+            )
+  
+    @error_throw
+    async def ignore(
+        self,
+        requestEvent: MemberJoinRequestEvent,
+        message: str = None
+    ) -> None:
+        """忽略该请求事件
+
+        Args:
+            requestEvent (RequestEvent): 一个请求事件
+            message (str, optional): 忽略该请求时附带的消息. Defaults to None.
+        """
+        if not isinstance(requestEvent, RequestEvent):
+            logger.error("非法请求")
+        else:
+            requestEvent.message = message
+            await self.ws.send_json(
+                wrap_data_json(
+                    syncId="reject",
+                    command=requestEvent.command,
+                    content=requestEvent.ignore
+                )
+            )
+
+    @error_throw
+    async def ignore_block(
+        self,
+        requestEvent: MemberJoinRequestEvent,
+        message: str = None
+    ) -> None:
+        """忽略入群并添加黑名单，不再接收该用户的入群申请
+
+        Args:
+            requestEvent (RequestEvent): 一个请求事件
+            message (str, optional): 忽略该请求时附带的消息. Defaults to None.
+        """
+        if not isinstance(requestEvent, RequestEvent):
+            logger.error("非法请求")
+        else:
+            requestEvent.message = message
+            await self.ws.send_json(
+                wrap_data_json(
+                    syncId="reject",
+                    command=requestEvent.command,
+                    content=requestEvent.ignore_block
+                )
+            )
 
     @error_throw
     async def uploadMultipart(self, obj: Union["Voice", "File", "Image", "FlashImage"], type: str) -> None:
@@ -527,14 +632,26 @@ class Yurine(object):
 
     async def fetchFileList(
         self,
+        target: Union[int, Group, Friend] = None,
         id: str = "",
         path: str = None,
-        target: Union[int, Group, Friend] = None,
         withDownloadInfo: bool = False,
         offset: int = 1,
         size: int = 10,
     ) -> Optional[List[File]]:
-        """获取文件列表"""
+        """获取文件列表
+
+        Args:
+            id (str, optional): 文件夹id, 空串为根目录. Defaults to "".
+            path (str, optional): 文件夹路径, 文件夹允许重名, 不保证准确, 准确定位使用 id. Defaults to None.
+            target (Union[int, Group, Friend], optional): 群聊或好友. Defaults to None.
+            withDownloadInfo (bool, optional): 	是否携带下载信息，额外请求，无必要不要携带. Defaults to False.
+            offset (int, optional): 分页偏移. Defaults to 1.
+            size (int, optional): 分页大小. Defaults to 10.
+
+        Returns:
+            Optional[List[File]]: _description_
+        """
         await self.ws.send_json(
             wrap_data_json(
                 command="file_list",
@@ -551,20 +668,413 @@ class Yurine(object):
         data = await self._raise_status()
         return data and [File(**file) for file in data]
 
-    async def fetchFileInfo():
-        """file_info"""
+    async def fetchFileInfo(
+        self,
+        target: Union[int, Group, Friend] = None,
+        id: str = "",
+        path: str = None,
+        withDownloadInfo: bool = False
+    ) -> Optional[File]:
+        """获取文件信息
 
-    async def fileMkdir():
+        Args:
+            id (str, optional): 已经激活的Session. Defaults to "".
+            path (str, optional): 文件夹路径, 文件夹允许重名, 不保证准确, 准确定位使用 id. Defaults to None.
+            target (Union[int,Group,Friend], optional): _description_. Defaults to None.
+            withDownloadInfo (bool, optional): _description_. Defaults to False.
+
+        Returns:
+            Optional[File]: _description_
+        """
+        await self.ws.send_json(
+            wrap_data_json(
+                command="file_info",
+                content={
+                    "id": id,
+                    "path": path,
+                    "target": target,
+                    "withDownloadInfo": withDownloadInfo
+                }
+            )
+        )
+        data = await self._raise_status()
+        return data and File(**data)
+
+    async def fileMkdir(
+        self,
+        target: Union[int, Friend, Group],
+        directoryName: str,
+        id: str = "",
+        path: Optional[str] = None,
+    ) -> Optional[File]:
         """file_mkdir"""
+        await self.ws.send_json(
+            wrap_data_json(
+                command="file_mkdir",
+                content={
+                    "id": id,
+                    "path": path,
+                    "target": target,
+                    "directoryName": directoryName
+                }
+            )
+        )
+        return self._raise_status()
 
-    async def fileDelete():
+    async def fileDelete(
+        self,
+        target: Union[int, Friend, Group],
+        id: str = "",
+        path: Optional[str] = None,
+    ) -> str:
         """file_delete"""
+        await self.ws.send_json(
+            wrap_data_json(
+                command="file_delete",
+                content={
+                    "id": id,
+                    "path": path,
+                    "target": target,
+                }
+            )
+        )
+        return self._raise_status()
 
-    async def fileMove():
+    async def fileMove(
+        self,
+        target: Union[int, Friend, Group],
+        path: str,
+        id: str = "",
+        moveTo: str = None,
+        moveToPath: str = None,
+    ) -> str:
         """file_move"""
+        if moveTo is None and moveToPath is None:
+            raise ValueError("必须选择移动至目标的位置")
+        await self.ws.send_json(
+            wrap_data_json(
+                command="file_move",
+                content={
+                    "id": id,
+                    "path": path,
+                    "target": target,
+                    "moveTo": moveTo,
+                    "moveToPath": moveToPath
+                }
+            )
+        )
+        return self._raise_status()
 
-    async def fileRename():
+    async def fileRename(
+        self,
+        target: Union[int, Friend, Group],
+        path: str,
+        renameTo: str,
+        id: str = "",
+    ) -> str:
         """file_rename"""
+        await self.ws.send_json(
+            wrap_data_json(
+                command="file_rename",
+                content={
+                    "id": id,
+                    "path": path,
+                    "target": target,
+                    "renameTo": renameTo
+                }
+            )
+        )
+
+    async def deleteFriend(
+        self,
+        friend: Union[int, Friend],
+    ) -> str:
+        await self.ws.send_json(
+            wrap_data_json(
+                command="deleteFriend",
+                content={
+                    "target": friend
+                }
+            )
+        )
+        return self._raise_status()
+
+    async def mute(
+        self,
+        group: Union[int, Group],
+        member: Union[int, Member],
+        time: Optional[int],
+    ) -> str:
+        await self.ws.send_json(
+            wrap_data_json(
+                command="mute",
+                content={
+                    "target": group,
+                    "memberId": member,
+                    "time": time
+                }
+            )
+        )
+        return await self._raise_status()
+
+    async def unmute(
+        self,
+        group: Union[int, Group],
+        member: Union[int, Member],
+    ) -> str:
+        await self.ws.send_json(
+            wrap_data_json(
+                command="unmute",
+                content={
+                    "target": group,
+                    "memberId": member
+                }
+            )
+        )
+        return await self._raise_status()
+
+    async def kick(
+        self,
+        group: Union[int, Group],
+        member: Union[int, Member],
+        msg: str = "",
+    ) -> str:
+        await self.ws.send_json(
+            wrap_data_json(
+                command="kick",
+                content={
+                    "target": group,
+                    "memberId": member,
+                    "msg": msg,
+                }
+            )
+        )
+        return await self._raise_status()
+
+    async def quit(
+        self,
+        group: Union[int, Group]
+    ) -> str:
+        await self.ws.send_json(
+            wrap_data_json(
+                command="quit",
+                content={
+                    "target": group
+                }
+            )
+        )
+        return self._raise_status()
+
+    async def muteAll(
+        self,
+        group: Union[int, Group],
+    ) -> str:
+        await self.ws.send_json(
+            wrap_data_json(
+                command="muteAll",
+                content={
+                    "target": group,
+                }
+            )
+        )
+        return self._raise_status()
+
+    async def unmuteAll(
+        self,
+        group: Union[int, Group]
+    ) -> str:
+        await self.ws.send_json(
+            wrap_data_json(
+                command="unmuteAll",
+                content={
+                    "target": group if isinstance(group, int) else group.id,
+                }
+            )
+        )
+        return self._raise_status()
+
+    async def setEssence(
+        self,
+        messageId: Union[int, Source]
+    ) -> str:
+        await self.ws.send_json(
+            wrap_data_json(
+                command="setEssence",
+                content={
+                    "target": messageId if isinstance(messageId, int) else messageId.id
+                }
+            )
+        )
+        return await self._raise_status()
+
+    async def fetchGroupConfig(
+        self,
+        group: Union[int, Group],
+    ) -> Optional[GroupConfig]:
+        await self.ws.send_json(
+            wrap_data_json(
+                command="groupConfig",
+                subCommand="get",
+                content={
+                    "target": group
+                }
+            )
+        )
+        config = await self._raise_status()
+        return config and GroupConfig(**config)
+
+    async def setGroupConfig(
+        self,
+        group: Union[int, Group],
+        config: Union[Dict, GroupConfig] = None
+    ) -> str:
+        if isinstance(config, GroupConfig):
+            config = GroupConfig.__dict__
+        await self.ws.send_json(
+            wrap_data_json(
+                command="groupConfig",
+                subCommand="set",
+                content={
+                    "target": group,
+                    "config": config
+                }
+            )
+        )
+        return await self._raise_status()
+
+    async def fetchMemberInfo(
+        self,
+        group: Union[int, Group],
+        member: Union[int, Member],
+    ) -> Optional[Member]:
+        await self.ws.send_json(
+            wrap_data_json(
+                command="memberInfo",
+                subCommand="get",
+                content={
+                    "target": group,
+                    "memberId": member
+                }
+            )
+        )
+        info = await self._raise_status()
+        return info and Member(**info)
+
+    async def setMemberInfo(
+        self,
+        group: Union[int, Group],
+        member: Union[int, Member],
+        info: Union[Dict, MemberInfo]
+    ) -> str:
+        if isinstance(info, MemberInfo):
+            info = MemberInfo.elements
+        await self.ws.send_json(
+            wrap_data_json(
+                command="memberInfo",
+                subCommand="update",
+                content={
+                    "target": group,
+                    "memberId": member,
+                    "info": info
+                }
+            )
+        )
+        return await self._raise_status()
+
+    async def setMemberAdmin(
+        self,
+        group: Union[int, Group],
+        member: Union[int, Member],
+        assign: bool,
+    ) -> str:
+        await self.ws.send_json(
+            wrap_data_json(
+                command="memberAdmin",
+                content={
+                    "target": group,
+                    "memberId": member,
+                    "assign": assign
+                }
+            )
+        )
+        return await self._raise_status()
+
+    async def fetchAnnouncement(
+        self,
+        group: Union[int, Group],
+        offset: Optional[int] = None,
+        size: Optional[int] = None,
+    ) -> List[Announcement]:
+        await self.ws.send_json(
+            wrap_data_json(
+                command="anno_list",
+                content={
+                    "id": group,
+                    "offset": offset,
+                    "size": size
+                }
+            )
+        )
+        anno_list = await self._raise_status()
+        return anno_list and [Announcement(**anno) for anno in anno_list]
+
+    async def publishAnnouncement(
+        self,
+        group: Union[int, Group],
+        content: str,
+        sendToNewMember: bool = False,
+        pinned: bool = False,
+        showEditCard: bool = False,
+        showPopup: bool = False,
+        requireConfirmation: bool = False,
+        image: Optional[Image] = None
+    ) -> Optional[Announcement]:
+        """此方法向指定群发布群公告
+        group          	    群组，可以是int也可以是群组对象
+        content         	公告内容
+        sendToNewMember    	是否发送给新成员
+        pinned          	是否置顶
+        showEditCard       	是否显示群成员修改群名片的引导
+        showPopup       	是否自动弹出
+        requireConfirmation	是否需要群成员确认
+        image        	    公告图片对象
+        """
+        if isinstance(image, Image):
+            image = self.uploadMultipart(image, type="group")
+            imageUrl = image.url
+        await self.ws.send_json(
+            wrap_data_json(
+                command="anno_publish",
+                content={
+                    "target": group,
+                    "content": content,
+                    "sendToNewMember": sendToNewMember,
+                    "pinned": pinned,
+                    "showEditCard": showEditCard,
+                    "showPopup": showPopup,
+                    "requireConfirmation": requireConfirmation,
+                    "imageUrl": imageUrl if image is not None else None
+                }
+            )
+        )
+        anno = await self._raise_status()
+        return anno and Announcement(**anno)
+
+    async def deleteAnnouncement(
+        self,
+        group: Union[int, Group],
+        fid: int
+    ) -> str:
+        await self.ws.send_json(
+            wrap_data_json(
+                command="anno_delete",
+                content={
+                    "id": group,
+                    "fid": fid
+                }
+            )
+        )
+        return await self._raise_status()
 
     async def _raise_task_cancel(self, _task: asyncio.Task) -> None:
         """取消当前事件循环中的任务"""
@@ -578,11 +1088,13 @@ class Yurine(object):
     async def _raise_status(self) -> Dict:
         # TODO
         _data = await self.ws.receive_json()
-        _status_code = _data.get("code")
+        _json_data = _data.get("data")
+        _status_code = _json_data.get("code")
         if _status_code:
-            self.logging.error(_data.get("msg"))
+            self.logging.error(_json_data.get("msg"))
             return None
-        return _data.get("data")
+        # print(_json_data)
+        return _json_data.get("data") or _data.get("msg")
 
     def run_forever(self) -> None:
         """挂起"""

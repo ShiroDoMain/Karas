@@ -5,6 +5,8 @@ import aiohttp
 import traceback
 from functools import wraps
 
+from karas.Sender import ReceptorBase
+
 
 def error_throw(func:Awaitable):
     @wraps(func)
@@ -51,6 +53,7 @@ def wrap_data_json(
     Returns:
         dict: _description_
     """
+    content = {_K:_V.id if isinstance(_V,ReceptorBase) else _V for _K,_V in content.items()}
     return {
         "syncId": syncId,
         "command": command,
