@@ -1,13 +1,14 @@
 # coding: utf-8
 
 from setuptools import setup
+import karas
 
 with open("README.md","r") as f:
     readme = f.read() 
 
 setup(
     name="karas_py",
-    version="0.1.0",
+    version=karas.__version__,
     author="ShiroDoMain",
 
     keywords="qqbot async",

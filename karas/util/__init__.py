@@ -1,3 +1,6 @@
+from karas.permission import PermissionEnum
+
+
 class MetaBase(type):
     def __new__(mcs, name, bases, namespace):
         if not namespace.get("type"):
@@ -15,7 +18,7 @@ class BaseModel(metaclass=MetaBase):
             try:
                 if _type and _v is not None and not isinstance(_v, _type):
                     _v = _type(**_v) \
-                        if _k != "messageChain" and _k != "origin" else _type(*_v)
+                        if _k not in ("origin","current") else PermissionEnum[_v].value if _k != "messageChain" else _type(*_v)
             except:
                 print(_k, ":", _v, "=>", _type)
                 print(self.__annotations__)

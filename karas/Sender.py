@@ -37,12 +37,18 @@ class Group(ReceptorBase):
     name: str
     permission: Permission
 
+    def __str__(self) -> str:
+        return f"{self.name}[{self.id}]"
+
 
 class Sender(ReceptorBase):
     type: str = "Sender"
     id: int
     nickname: str
     remark: str
+
+    def __str__(self) -> str:
+        return f"{self.nickname}[{self.id}]"
 
 
 class Friend(ReceptorBase):
@@ -51,12 +57,18 @@ class Friend(ReceptorBase):
     nickname: str
     remark: str
 
+    def __str__(self) -> str:
+        return f"{self.nickname}[{self.id}]"
+
 
 class Stranger(ReceptorBase):
     type: str = "Stranger"
     id: int
     nickname: str
     remark: str
+
+    def __str__(self) -> str:
+        return f"{self.nickname}[{self.id}]"
 
 
 class Operator(ReceptorBase):
@@ -76,6 +88,9 @@ class Operator(ReceptorBase):
     lastSpeakTimestamp: int
     muteTimeRemaining: int
 
+    def __str__(self) -> str:
+        return f"{self.memberName}[{self.id}]"
+
 
 class Member(ReceptorBase):
     """
@@ -90,12 +105,15 @@ class Member(ReceptorBase):
     muteTimeRemaining: int
     group: Group
 
+    def __str__(self) -> str:
+        return f"{self.memberName}[{self.id}]"
+
 
 class Subject(ReceptorBase):
     """"""
     type: str = "Subject"
     id: int
-    kind: Union["Group", "Friend"]
+    kind: str
 
 
 class Client(ReceptorBase):
