@@ -24,7 +24,9 @@ from karas.elements import (
     FriendProfile,
     MemberProfile,
     UserProfile,
-    BotProfile
+    BotProfile,
+    GroupConfig,
+    MemberInfo
 )
 from karas.Sender import (
     Group,
@@ -35,6 +37,7 @@ from karas.Sender import (
     Member,
     Subject,
     Client,
+    Announcement,
 )
 from karas.chain import MessageChain, Quote, ForwardMessage
 from karas.permission import AdministartorPermission, MemberPermission, OwnerPermission
@@ -69,6 +72,7 @@ from karas.event import (
     MemberSpecialTitleChangeEvent,
     MemberPermissionChangeEvent,
     MemberMuteEvent,
+    MemberUnmuteEvent,
     MemberHonorChangeEvent,
     NewFriendRequestEvent,
     MemberJoinRequestEvent,

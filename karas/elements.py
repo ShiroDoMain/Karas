@@ -73,7 +73,6 @@ class Image(ElementBase):
         super().__init__(**kwargs)
         self.type: str = "Image"
         self.ftype = "img"
-        # self.type = "Image"
         self.file = file
 
     def __str__(self) -> str:
@@ -84,16 +83,24 @@ class Image(ElementBase):
         self.url = kwds.get("url")
 
 
-class FlashImage(Image):
+class FlashImage(ElementBase):
     imageId: str
     url: str
     path: str
     base64: str
 
-    def __init__(self, **kwargs):
-        self.type: str = "FlashImage"
+    def __init__(self, file: Union[str, BinaryIO, bytes, None] = None, *args, **kwargs) -> None:
         super().__init__(**kwargs)
+        self.type: str = "FlashImage"
+        self.ftype = "img"
+        self.file = file
 
+    def __str__(self) -> str:
+        return f"[闪照:{self.imageId}]"
+
+    def __call__(self, *args: Any, **kwds: Any) -> None:
+        self.imageId = kwds.get("imageId")
+        self.url = kwds.get("url")
 
 class Voice(ElementBase):
     voiceId: str

@@ -138,7 +138,7 @@ class Announcement(ReceptorBase):
     publicationTime             发布时间
 
     """
-    group:Group
+    group: Group
     content: str
     senderId: int
     fid: int

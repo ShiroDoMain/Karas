@@ -17,7 +17,7 @@ from karas.util.Logger import Logging
 from karas.util.network import error_throw, URL_Route, wrap_data_json
 
 
-__version__ = "0.1.3"
+__version__ = "0.1.4"
 
 
 async def _build_content_json(
@@ -42,7 +42,7 @@ class Karas(object):
 
     @classmethod
     async def event_parse(cls, original: dict, _logger: Logging = None) -> AsyncGenerator:
-        # print(f"\nOriginal:{original}\n")
+        _logger.debug(original)
         _event: Union[MessageBase,
                       Event] = Auto_Switch_Event.parse_json(**original)
         isBotEvent = yield _event
@@ -348,8 +348,9 @@ class Yurine(object):
 
     @error_throw
     async def uploadMultipart(self, obj: Union["Voice", "File", "Image", "FlashImage"], type: str) -> None:
+        uploadType = "Image" if isinstance(obj, FlashImage) else obj.type
         async with self.session.post(
-                self.route(f"upload{obj.type}"),
+                self.route(f"upload{uploadType}"),
                 data={
                     "sessionKey": self.sessionKey,
                     "type": type,

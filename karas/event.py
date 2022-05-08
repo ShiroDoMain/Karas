@@ -37,7 +37,6 @@ class Event(EventBase):
         self.event = event
         self.type = kwargs.get("type") or event.type
 
-
     def __call__(self, *args, **kwargs):
         pass
 
@@ -290,7 +289,6 @@ class GroupAllowConfessTalkEvent(GroupEventBase):
         return super().__str__() + f":{self.group}"
 
 
-
 class GroupAllowMemberInviteEvent(GroupEventBase):
     """允许群员邀请好友加群"""
     type: str = "GroupAllowMemberInviteEvent"
@@ -303,7 +301,6 @@ class GroupAllowMemberInviteEvent(GroupEventBase):
         return super().__str__() + f":{self.operator} -> {self.group}"
 
 
-
 class MemberJoinEvent(GroupEventBase):
     """新人入群的事件"""
     type: str = "MemberJoinEvent"
@@ -314,7 +311,6 @@ class MemberJoinEvent(GroupEventBase):
         return super().__str__() + f":{self.member}"
 
 
-
 class MemberLeaveEventKick(GroupEventBase):
     """成员被踢出群聊(该成员不是bot)"""
     type: str = "MemberLeaveEventKick"
@@ -323,7 +319,6 @@ class MemberLeaveEventKick(GroupEventBase):
 
     def __str__(self) -> str:
         return super().__str__() + f":{self.operator} -> {self.member}"
-
 
 
 class MemberLeaveEventQuit(GroupEventBase):
@@ -356,6 +351,7 @@ class MemberSpecialTitleChangeEvent(GroupEventBase):
     def __str__(self) -> str:
         return super().__str__() + f": {self.member}"
 
+
 class MemberPermissionChangeEvent(GroupEventBase):
     """成员权限改变的事件（该成员不是Bot）"""
     type: str = "MemberPermissionChangeEvent"
@@ -376,6 +372,7 @@ class MemberMuteEvent(GroupEventBase):
 
     def __str__(self) -> str:
         return super().__str__() + f": {self.member}"
+
 
 class MemberUnmuteEvent(GroupEventBase):
     """群成员被取消禁言事件（该成员不是Bot）"""
@@ -408,9 +405,10 @@ class NewFriendRequestEvent(RequestEvent):
     def reject_block(self):
         self.operate = 2
         return __dict__
-    
+
     def __str__(self) -> str:
-        return super().__str__() +f":{self.nick}[{self.fromId}]"
+        return super().__str__() + f":{self.nick}[{self.fromId}]"
+
 
 class MemberJoinRequestEvent(RequestEvent):
     """用户入群申请（Bot需要有管理员权限）"""
@@ -436,6 +434,7 @@ class MemberJoinRequestEvent(RequestEvent):
     def __str__(self) -> str:
         return super().__str__() + f":{self.groupName}[{self.groupId}]"
 
+
 class BotInvitedJoinGroupRequestEvent(RequestEvent):
     """Bot被邀请入群申请"""
     type: str = "BotInvitedJoinGroupRequestEvent"
@@ -443,7 +442,7 @@ class BotInvitedJoinGroupRequestEvent(RequestEvent):
     command = "resp_botInvitedJoinGroupRequestEvent"
 
     def __str__(self) -> str:
-        return super().__str__() +f":{self.groupId}"
+        return super().__str__() + f":{self.groupId}"
 
 
 class OtherClientOnlineEvent(EventBase):

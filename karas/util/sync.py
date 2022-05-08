@@ -1,10 +1,8 @@
 import asyncio
-import functools, threading, inspect
+import functools
+import threading
+import inspect
 
-class AsyncClass:
-    @classmethod
-    async def print_(cls,text):
-        print(text)
 
 def async_to_sync(obj, name):
     function = getattr(obj, name)
@@ -36,10 +34,10 @@ def async_to_sync(obj, name):
                     return asyncio.run_coroutine_threadsafe(coroutine, main_loop).result()
     setattr(obj, name, _wrap)
 
+
 def async_to_sync_wrap(cls):
-    attrs = [attr for attr in cls.__dict__ if not attr.startswith("_") and (inspect.iscoroutinefunction(getattr(cls,attr)) or inspect.isasyncgenfunction(getattr(cls,attr)))]
+    attrs = [attr for attr in cls.__dict__ if not attr.startswith("_") and (
+        inspect.iscoroutinefunction(getattr(cls, attr)) or inspect.isasyncgenfunction(getattr(cls, attr)))]
     for attr in attrs:
-        async_to_sync(cls,attr)
+        async_to_sync(cls, attr)
     return cls
-
-

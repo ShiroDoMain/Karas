@@ -4,13 +4,13 @@ from enum import Enum
 class Permission:
     type: str
 
-    def __init__(self,*args,**kwargs) -> None:
+    def __init__(self, *args, **kwargs) -> None:
         pass
 
     def __eq__(self, __o: object) -> bool:
-        if not isinstance(__o,self):
+        if not isinstance(__o, self):
             return False
-        return self.type == __o if isinstance(__o,str) else self.type == __o.type
+        return self.type == __o if isinstance(__o, str) else self.type == __o.type
 
     def __str__(self) -> str:
         return self.type

@@ -8,7 +8,7 @@ from functools import wraps
 from karas.Sender import ReceptorBase
 
 
-def error_throw(func:Awaitable):
+def error_throw(func: Awaitable):
     @wraps(func)
     async def _wrapper(*args, **kwargs):
         try:
@@ -23,7 +23,7 @@ def error_throw(func:Awaitable):
         else:
             return _response
     return _wrapper
-    
+
 
 def echo_receiver(ws: aiohttp.ClientWebSocketResponse, _return: str = None):
     def wrapper(func):
@@ -52,7 +52,8 @@ def wrap_data_json(
         dict: _description_
     """
     if content is not None:
-        content = {_K:_V.id if isinstance(_V,ReceptorBase) else _V for _K,_V in content.items()}
+        content = {_K: _V.id if isinstance(
+            _V, ReceptorBase) else _V for _K, _V in content.items()}
     return {
         "syncId": syncId,
         "command": command,
