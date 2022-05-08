@@ -41,6 +41,9 @@ class Event(EventBase):
     def __call__(self, *args, **kwargs):
         pass
 
+    def __str__(self) -> str:
+        return self.event.__str__()
+
 
 class BotEventBase(EventBase):
     """Bot自身事件"""

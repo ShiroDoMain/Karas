@@ -17,7 +17,7 @@ from karas.util.Logger import Logging
 from karas.util.network import error_throw, URL_Route, wrap_data_json
 
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 
 async def _build_content_json(
@@ -43,13 +43,10 @@ class Karas(object):
     @classmethod
     async def event_parse(cls, original: dict, _logger: Logging = None) -> AsyncGenerator:
         # print(f"\nOriginal:{original}\n")
-        _event: Union[MessageBase,
-                      Event] = Auto_Switch_Event.parse_json(**original)
+        _event: Union[MessageBase,Event] = Auto_Switch_Event.parse_json(**original)
         isBotEvent = yield _event
-        _logger.info(_event)
-        if isBotEvent:
-            _logger.info(_event.__str__())
-        elif _event:
+        _logger.info(_event.__str__())
+        if not isBotEvent:
             await cls._executor(_event)
         yield
 
@@ -490,40 +487,41 @@ class Yurine(object):
     @error_throw
     async def sendNudge(
             self,
-            target: Union[int, "ElementBase", "Friend", "Member", None] = None,
+            target: Union["ElementBase", "Friend", "Member", None] = None,
             subject: Union[int, "Group", "Friend", None] = None,
             kind: Union[str, "Group", "Friend", "Stranger", None] = None,
-            nudgeEvent: "NudgeEvent" = None,
+            event: "NudgeEvent" = None,
     ) -> None:
-        """发送头像戳一戳消息
+        """发送头像戳一戳消息，你可以只传入目标对象或者是一个事件对象
 
         Args:
             nudgeEvent:(Event): 戳一戳事件的主体，不为None时则对发出此事件的对象发送戳一戳
-            target (Union[int,ElementBase]): 戳一戳的目标, QQ号, 可以为 bot QQ号
+            target (Union[ElementBase]): 戳一戳的目标, QQ号, 可以为 bot QQ号
             subject (Union[int,Group,Friend]): 戳一戳接受主体(上下文), 戳一戳信息会发送至该主体, 为群号/好友QQ号
             kind (Union[str,Group,Friend,Stranger]): 上下文类型, 可选值 Friend, Group, Stranger
 
         Returns:
-            _type_: 不知道会返回什么，不返回了，反正也没什么意义
+            _type_:
         """
-        target = target if target is not None else nudgeEvent.fromId
-        subject = subject if nudgeEvent is None else nudgeEvent.subject.id \
-            if subject is None else target.group.id if isinstance(target, Member) else target.id
-        kind = kind if nudgeEvent is None else nudgeEvent.subject.kind \
-            if kind is None else target.group.type if isinstance(target, Member) else target.type
+        if isinstance(target,NudgeEvent):
+            event = target
+        target = target if event is None else event.fromId
+        subject = subject if subject is not None else event.subject if event is not None \
+            else target.group if isinstance(target,Member) else target.id
+        kind = kind if kind is not None else event.subject.kind if event is not None \
+            else target.group.type if isinstance(target,Member) else target.type
         await self.ws.send_json(
             wrap_data_json(
                 syncId="sendNudge",
                 command="sendNudge",
                 content={
-                    "target": target if isinstance(target, int) else target.id,
-                    "subject": subject if isinstance(subject, int) else subject.id,
-                    "kind": kind if isinstance(kind, str) else kind.type
+                    "target": target,
+                    "subject": subject,
+                    "kind": kind
                 }))
-        echo: dict = await self.ws.receive_json()
-        if echo.get("data").get("code") != 0:
-            self.logging.error(f"{echo}")
-        return echo.get("data").get("code")
+        self.logging.info(f"Bot <= NudgeEvent:{subject}")
+        data = await self._raise_status()
+        return data
 
     async def fetchMessageFromId(
         self,
@@ -1306,13 +1304,13 @@ class Yurine(object):
         if _status_code is not None and _status_code != 0:
             self.logging.error(_data.get("msg"))
             return None
-        print(_data)
-        return _data.get("data") and _data or _data.get("msg")
+        return _data.get("data") or _data or _data.get("msg")
 
     def run_forever(self) -> None:
         """挂起"""
+        self.logging.debug("run_forever")
         if not self.is_running:
-            self.start()
+            self.stcart()
         if not self._receiver_is_running:
             self.loop.create_task(self._receiver())
             self.logging.info(f"receiver created")
@@ -1325,6 +1323,7 @@ class Yurine(object):
             self.close()
 
     def start(self) -> int:
+        self.logging.debug("running function start")
         if self.is_running:
             return 0
         self.logging.info(f"initialization......")

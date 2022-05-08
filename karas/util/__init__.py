@@ -17,8 +17,8 @@ class BaseModel(metaclass=MetaBase):
             _type = self.__annotations__.get(_k)
             try:
                 if _type and _v is not None and not isinstance(_v, _type):
-                    _v = _type(**_v) \
-                        if _k not in ("origin","current") else PermissionEnum[_v].value if _k != "messageChain" else _type(*_v)
+                    _v = PermissionEnum[_v].value \
+                        if _k in ("origin","current") else _type(*_v) if _k == "messageChain" else _type(**_v)
             except:
                 print(_k, ":", _v, "=>", _type)
                 print(self.__annotations__)
