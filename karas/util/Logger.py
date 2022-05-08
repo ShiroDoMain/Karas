@@ -80,7 +80,7 @@ class Logging:
         self.handle.setLevel(level=loggerLevel.upper())
         self._logFile = logFile
         self.filename = filename
-        if self.filename is None and not os.path.exists("logs"):
+        if (self.filename is None or logFile) and not os.path.exists("logs"):
             os.mkdir("logs")
         self.logging.addHandler(hdlr=self.handle)
 

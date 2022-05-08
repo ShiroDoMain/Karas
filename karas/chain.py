@@ -115,7 +115,6 @@ class Quote(ElementBase):
         self.type = "Quote"
 
 
-
 class nodeList(ElementBase):
     senderId: int
     time: int
@@ -134,4 +133,3 @@ class ForwardMessage(ElementBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.type = "ForwardMessage"
-

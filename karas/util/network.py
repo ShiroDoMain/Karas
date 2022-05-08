@@ -16,11 +16,9 @@ def error_throw(func:Awaitable):
                 _response = await func(*args, **kwargs)
             else:
                 _response = func(*args, **kwargs)
-        except RuntimeError as _re:
-            raise
         except Exception as e:
-            _,_,tb = sys.exc_info()
-            traceback.print_tb(tb,limit=10)
+            # _,_,tb = sys.exc_info()
+            # traceback.print_tb(tb,limit=10)
             raise
         else:
             return _response

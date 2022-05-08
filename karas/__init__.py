@@ -17,7 +17,7 @@ from karas.util.Logger import Logging
 from karas.util.network import error_throw, URL_Route, wrap_data_json
 
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 
 
 async def _build_content_json(
@@ -43,7 +43,8 @@ class Karas(object):
     @classmethod
     async def event_parse(cls, original: dict, _logger: Logging = None) -> AsyncGenerator:
         # print(f"\nOriginal:{original}\n")
-        _event: Union[MessageBase,Event] = Auto_Switch_Event.parse_json(**original)
+        _event: Union[MessageBase,
+                      Event] = Auto_Switch_Event.parse_json(**original)
         isBotEvent = yield _event
         _logger.info(_event.__str__())
         if not isBotEvent:
@@ -219,7 +220,7 @@ class Yurine(object):
                     f"register listener [{Callable.__name__}] for Event[{registerEvent}]"
                 )
                 if Karas.listeners.get(registerEvent):
-                    Karas.listeners.get(registerEvent).apeend(Callable)
+                    Karas.listeners.get(registerEvent).append(Callable)
                 else:
                     Karas.listeners[registerEvent] = [Callable, ]
             return register_wrapper()
@@ -503,13 +504,13 @@ class Yurine(object):
         Returns:
             _type_:
         """
-        if isinstance(target,NudgeEvent):
+        if isinstance(target, NudgeEvent):
             event = target
         target = target if event is None else event.fromId
         subject = subject if subject is not None else event.subject if event is not None \
-            else target.group if isinstance(target,Member) else target.id
+            else target.group if isinstance(target, Member) else target.id
         kind = kind if kind is not None else event.subject.kind if event is not None \
-            else target.group.type if isinstance(target,Member) else target.type
+            else target.group.type if isinstance(target, Member) else target.type
         await self.ws.send_json(
             wrap_data_json(
                 syncId="sendNudge",
@@ -523,6 +524,7 @@ class Yurine(object):
         data = await self._raise_status()
         return data
 
+    @error_throw
     async def fetchMessageFromId(
         self,
         messageId: int
@@ -660,6 +662,7 @@ class Yurine(object):
         data = await self._raise_status()
         return data and UserProfile(**data)
 
+    @error_throw
     async def fetchFileList(
         self,
         target: Union[int, Group, Friend] = None,
@@ -698,6 +701,7 @@ class Yurine(object):
         data = await self._raise_status()
         return data and [File(**file) for file in data]
 
+    @error_throw
     async def fetchFileInfo(
         self,
         target: Union[int, Group, Friend] = None,
@@ -730,6 +734,7 @@ class Yurine(object):
         data = await self._raise_status()
         return data and File(**data)
 
+    @error_throw
     async def fileMkdir(
         self,
         target: Union[int, Friend, Group],
@@ -761,6 +766,7 @@ class Yurine(object):
         )
         return self._raise_status()
 
+    @error_throw
     async def fileDelete(
         self,
         target: Union[int, Friend, Group],
@@ -789,6 +795,7 @@ class Yurine(object):
         )
         return self._raise_status()
 
+    @error_throw
     async def fileMove(
         self,
         target: Union[int, Friend, Group],
@@ -828,6 +835,7 @@ class Yurine(object):
         )
         return self._raise_status()
 
+    @error_throw
     async def fileRename(
         self,
         target: Union[int, Friend, Group],
@@ -858,6 +866,7 @@ class Yurine(object):
             )
         )
 
+    @error_throw
     async def deleteFriend(
         self,
         friend: Union[int, Friend],
@@ -880,6 +889,7 @@ class Yurine(object):
         )
         return self._raise_status()
 
+    @error_throw
     async def mute(
         self,
         group: Union[int, Group],
@@ -908,6 +918,7 @@ class Yurine(object):
         )
         return await self._raise_status()
 
+    @error_throw
     async def unmute(
         self,
         group: Union[int, Group],
@@ -933,6 +944,7 @@ class Yurine(object):
         )
         return await self._raise_status()
 
+    @error_throw
     async def kick(
         self,
         group: Union[int, Group],
@@ -961,6 +973,7 @@ class Yurine(object):
         )
         return await self._raise_status()
 
+    @error_throw
     async def quit(
         self,
         group: Union[int, Group]
@@ -983,6 +996,7 @@ class Yurine(object):
         )
         return self._raise_status()
 
+    @error_throw
     async def muteAll(
         self,
         group: Union[int, Group],
@@ -1005,6 +1019,7 @@ class Yurine(object):
         )
         return self._raise_status()
 
+    @error_throw
     async def unmuteAll(
         self,
         group: Union[int, Group]
@@ -1028,6 +1043,7 @@ class Yurine(object):
         )
         return self._raise_status()
 
+    @error_throw
     async def setEssence(
         self,
         messageId: Union[int, Source]
@@ -1050,6 +1066,7 @@ class Yurine(object):
         )
         return await self._raise_status()
 
+    @error_throw
     async def fetchGroupConfig(
         self,
         group: Union[int, Group],
@@ -1074,6 +1091,7 @@ class Yurine(object):
         config = await self._raise_status()
         return config and GroupConfig(**config)
 
+    @error_throw
     async def setGroupConfig(
         self,
         group: Union[int, Group],
@@ -1102,6 +1120,7 @@ class Yurine(object):
         )
         return await self._raise_status()
 
+    @error_throw
     async def fetchMemberInfo(
         self,
         group: Union[int, Group],
@@ -1129,6 +1148,7 @@ class Yurine(object):
         info = await self._raise_status()
         return info and Member(**info)
 
+    @error_throw
     async def setMemberInfo(
         self,
         group: Union[int, Group],
@@ -1160,6 +1180,7 @@ class Yurine(object):
         )
         return await self._raise_status()
 
+    @error_throw
     async def setMemberAdmin(
         self,
         group: Union[int, Group],
@@ -1188,6 +1209,7 @@ class Yurine(object):
         )
         return await self._raise_status()
 
+    @error_throw
     async def fetchAnnouncement(
         self,
         group: Union[int, Group],
@@ -1217,6 +1239,7 @@ class Yurine(object):
         anno_list = await self._raise_status()
         return anno_list and [Announcement(**anno) for anno in anno_list]
 
+    @error_throw
     async def publishAnnouncement(
         self,
         group: Union[int, Group],
@@ -1262,6 +1285,7 @@ class Yurine(object):
         anno = await self._raise_status()
         return anno and Announcement(**anno)
 
+    @error_throw
     async def deleteAnnouncement(
         self,
         group: Union[int, Group],
