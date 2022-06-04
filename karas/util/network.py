@@ -1,27 +1,42 @@
+import asyncio
 import inspect
-from typing import Awaitable, Callable, Optional, Union
-import sys
-import aiohttp
 import traceback
+from typing import Awaitable, Optional, Union
+import aiohttp
+from aiohttp.web_exceptions import HTTPRequestTimeout
 from functools import wraps
-
 from karas.Sender import ReceptorBase
+from karas.exceptions import BotBaseException, ConnectException
 
 
 def error_throw(func: Awaitable):
     @wraps(func)
-    async def _wrapper(*args, **kwargs):
+    async def _wrapper(obj: "Yurine", *args, **kwargs):
         try:
             if inspect.iscoroutinefunction(func):
-                _response = await func(*args, **kwargs)
+                return await func(obj, *args, **kwargs)
             else:
-                _response = func(*args, **kwargs)
-        except Exception as e:
-            # _,_,tb = sys.exc_info()
-            # traceback.print_tb(tb,limit=10)
-            raise
-        else:
-            return _response
+                return func(obj, *args, **kwargs)
+        except ConnectException as ce:
+            obj.logging.error(
+                f"connot connet host {obj.host},trying reconnect")
+            for reload in range(1, 6):
+                obj.logging.warning(f"try connect {obj.host} {reload}/5")
+                try:
+                    return await func(obj, *args, **kwargs)
+                except ConnectException:
+                    await asyncio.sleep(5)
+                except Exception:
+                    traceback.print_exc()
+                    await asyncio.sleep(5)
+            await obj.stop()
+            raise ce
+        except (BotBaseException) as be:
+            await obj.session.close()
+            raise be
+        except HTTPRequestTimeout as exc:
+            obj.logging.error(f"{func.__name__} timeout")
+
     return _wrapper
 
 

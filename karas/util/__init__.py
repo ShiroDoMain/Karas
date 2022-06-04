@@ -1,3 +1,4 @@
+from karas.exceptions import *
 from karas.permission import PermissionEnum
 
 
@@ -19,10 +20,10 @@ class BaseModel(metaclass=MetaBase):
                 if _type and _v is not None and not isinstance(_v, _type):
                     _v = PermissionEnum[_v].value \
                         if _k in ("origin", "current") else _type(*_v) if _k == "messageChain" else _type(**_v)
-            except:
-                print(_k, ":", _v, "=>", _type)
-                print(self.__annotations__)
-                raise
+            except Exception as e:
+                # print(_k, ":", _v, "=>", _type)
+                # print(self.__annotations__)
+                raise e
             setattr(self, _k, _v)
 
     @classmethod
@@ -37,3 +38,18 @@ class BaseModel(metaclass=MetaBase):
 
     def __str__(self) -> str:
         return self.__dict__.__str__()
+
+
+status_code_exception = {
+    0:None,
+    1:VerifyException,
+    2:BotNotFoundException,
+    3:SessionInvalidationException,
+    4:SessionUnauthorizedException,
+    5:TargetNotFoundException,
+    6:FileNotFoundException,
+    10:PermissionException,
+    20:BotMutedException,
+    30:MessageTooLongException,
+    400:InvalidArgumentException
+}

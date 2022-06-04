@@ -3,8 +3,10 @@ import inspect
 from tokenize import group
 from aiohttp import ClientSession, ClientWebSocketResponse
 import asyncio
-from typing import Awaitable, Coroutine, Dict, List, Optional, Union, AsyncGenerator
+from typing import Awaitable, Dict, List, Optional, Union, AsyncGenerator
 
+import aiohttp
+from karas.util import status_code_exception
 from karas.util.sync import async_to_sync_wrap
 from karas.chain import MessageChain
 from karas.Sender import Friend, Group, Member, Stranger, ReceptorBase, Announcement
@@ -12,12 +14,12 @@ from karas.messages import MessageBase
 from karas.event import Auto_Switch_Event, EventBase, MemberJoinRequestEvent, NewFriendRequestEvent, RequestEvent, Event, NudgeEvent
 from karas.elements import ElementBase, File, FlashImage, GroupConfig, Image, MemberInfo, Plain, Source, Voice, FriendProfile, MemberProfile, \
     BotProfile, UserProfile
-from karas.exceptions import InvalidArgumentError, VerifyError
+from karas.exceptions import ConnectException
 from karas.util.Logger import Logging
 from karas.util.network import error_throw, URL_Route, wrap_data_json
 
 
-__version__ = "0.1.4"
+__version__ = "0.1.5"
 
 
 async def _build_content_json(
@@ -102,30 +104,56 @@ class Yurine(object):
             logToFile=False,
             logFileName: str = None
     ) -> None:
+        self._host = host
+        self._port = port
         self.url = f"{protocol}://{host}:{port}"
         self.protocol = protocol
         self.account = qq
-        self.verifyKey = verifyKey
+        self._verifyKey = verifyKey
         self.sessionKey = sessionKey
-        self.session = session
-        self.ws = None
+        self._session = session
+        self._ws = ws
 
         self.route = URL_Route(self.url)
         self.logging = Logging(
             loggerLevel, qq, filename=logFileName, logFile=logToFile)
-        self.loop = loop or asyncio.get_event_loop()
+        self._loop = loop or asyncio.get_event_loop()
         self.karas = karas or Karas
 
         self.is_running = False
         self._receiver_is_running = False
         self.start()
 
+    @property
+    def host(self):
+        return self._host
+
+    @property
+    def port(self):
+        return self._port
+
+    @property
+    def loop(self):
+        return self._loop
+
+    @property
+    def session(self):
+        return self._session
+
+    @property
+    def ws(self):
+        return self._ws
+
+    @property
+    def verifyKey(self):
+        return self._verifyKey
+
     @error_throw
     async def _initialization(self) -> None:
         """初始化"""
         self.logging.debug(f"URL:  {self.url}")
         if not self.session:
-            self.session = ClientSession(loop=self.loop)
+            self._session = ClientSession(loop=self.loop)
             await self._connect()
             self.logging.info("Account verify success")
             self.logging.debug(f"got verifyKey {self.sessionKey}")
@@ -163,29 +191,27 @@ class Yurine(object):
                 self.logging.warning("connect reset, retry...")
                 await asyncio.sleep(1)
             else:
-                await asyncio.sleep(3)
+                await asyncio.sleep(.5)
 
     @error_throw
     async def _connect(self) -> Optional[int]:
         """
         向服务器发起 WebSocket 连接
         :return 返回连接是否成功
-        :raise VerifyError
+        :raise VerifyException
         """
         self.logging.debug(f"connect websocket server {self.url}")
-        self.ws = await self.session.ws_connect(
-            url=self.route("all"),
-            headers={
-                "verifyKey": self.verifyKey,
-                "qq": str(self.account)
-            }
-        )
-        _verify_response: dict = await self.ws.receive_json()
-        self.logging.debug(f"verify key {_verify_response}")
-        _verify_data: dict = _verify_response.get("data")
-        if _verify_data.get("code") != 0:
-            raise VerifyError
-        self.sessionKey: str = _verify_data.get("session")
+        try:
+            self._ws = await self.session.ws_connect(
+                url=self.route("all"),
+                headers={
+                    "verifyKey": self.verifyKey,
+                    "qq": str(self.account)
+                }
+            )
+        except aiohttp.ClientConnectionError as exc:
+            raise ConnectException from exc
+        self.sessionKey: str = (await self._raise_status()).get("session")
         self.loop.create_task(self._ping())
         return 0
 
@@ -367,8 +393,21 @@ class Yurine(object):
         return element.elements
 
     @error_throw
+    async def about(self):
+        """获取mirai-api-http的版本"""
+        await self.ws.send_json(
+            wrap_data_json(
+                command="about",
+            )
+        )
+        version = await self._raise_status()
+        return version.get("version")
+
+
+    @error_throw
     async def sendGroup(
-            self, group: Union[int, "Group"],
+            self, 
+            group: Union[int, "Group"],
             Elements: Union[List[Union[ElementBase, MessageChain]], MessageChain],
             quote: Union[int, Source] = None
     ) -> Optional[int]:
@@ -393,7 +432,7 @@ class Yurine(object):
                 content=content
             ))
         self.logging.info(f"bot <= {MessageChain(*_chain).to_str()}")
-        echo = await self.ws.receive_json()
+        echo = await self._raise_status()
         return echo.get("messageId")
 
     @error_throw
@@ -426,7 +465,7 @@ class Yurine(object):
             )
         )
         self.logging.info(f"Bot <= {MessageChain(*_chain).to_str()}")
-        echo = await self.ws.receive_json()
+        echo = await self._raise_status()
         return echo.get("messageId")
 
     @error_throw
@@ -466,7 +505,7 @@ class Yurine(object):
             )
         )
         self.logging.info(f"bot <= {MessageChain(*_chain).to_str()}")
-        echo = await self.ws.receive_json()
+        echo = await self._raise_status()
         return echo.get("messageId")
 
     @error_throw
@@ -1321,14 +1360,15 @@ class Yurine(object):
             except asyncio.CancelledError:
                 self.logging.debug(f"canceled <task {id(_task)}>")
 
+    # @error_throw
     async def _raise_status(self) -> Dict:
-        # TODO
         _json_data = await self.ws.receive_json()
+        self.logging.debug(f"recv data {_json_data}")
         _data = _json_data.get("data")
         _status_code = _json_data.get("code") or _data.get("code")
-        if _status_code is not None and _status_code != 0:
-            self.logging.error(_data.get("msg"))
-            return None
+        _exception = status_code_exception.get(_status_code or 0)
+        if _exception is not None:
+            raise _exception(_data.get("msg"))
         return _data.get("data") or _data or _data.get("msg")
 
     def run_forever(self) -> None:
@@ -1362,7 +1402,10 @@ class Yurine(object):
         if self.loop.is_closed():
             return
         self.stop()
-        self.loop.close()
+        try:
+            self.loop.close()
+        except RuntimeError:
+            pass
         self.logging.debug(f"loop closed is  {self.loop.is_closed()}")
 
     async def stop(self) -> int:

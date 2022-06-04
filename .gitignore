@@ -1,4 +1,4 @@
-*/__pycache__
+__pycache__
 *.log
 main.py
 test*.*
@@ -7,7 +7,7 @@ test*.*
 /mirai*
 .DS_Store
 /logs
-
+TEST*
 /dist
 *.egg-info
 /build

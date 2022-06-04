@@ -260,7 +260,7 @@ class File(ElementBase):
     isDirectory: bool
     downloadInfo: FileDownloadInfo
 
-    def __init__(self, parent, **kwargs):
+    def __init__(self, parent = None, **kwargs):
         self.type: str = "File"
         if parent:
             self.parent = File(**parent)
