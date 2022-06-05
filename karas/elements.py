@@ -96,7 +96,7 @@ class FlashImage(ElementBase):
         self.file = file
 
     def __str__(self) -> str:
-        return f"[闪照:{self.imageId}]"
+        return f" [闪照:{self.imageId}]"
 
     def __call__(self, *args: Any, **kwds: Any) -> None:
         self.imageId = kwds.get("imageId")
@@ -117,7 +117,7 @@ class Voice(ElementBase):
         self.file = file
 
     def __str__(self) -> str:
-        return f"[语音:{self.voiceId}]"
+        return f" [语音:{self.voiceId}]"
 
     def __call__(self, *args: Any, **kwds: Any) -> None:
         self.voiceId = kwds.get("voiceId")
@@ -260,13 +260,16 @@ class File(ElementBase):
     isDirectory: bool
     downloadInfo: FileDownloadInfo
 
-    def __init__(self, parent = None, **kwargs):
+
+    def __init__(self, file:Union[str,bytes, BinaryIO, None] = None, path: str = "", parent = None, **kwargs):
         self.type: str = "File"
-        if parent:
-            self.parent = File(**parent)
-        else:
-            self.parent = parent
+        self.file = file
+        self.path = path
+        self.parent = parent and File(**parent)
         super().__init__(**kwargs)
+    
+    def __str__(self) -> str:
+        return f" File[{self.id}]"
 
 
 class MiraiCode(ElementBase):

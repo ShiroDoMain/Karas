@@ -21,10 +21,16 @@ __all__ : Tuple[str]= (
     "SessionUnauthorizedException",
     "TargetNotFoundException",
     "VerifyException",
+    "FunctionException",
 )
 
 
 class BotBaseException(Exception):
+    pass
+
+
+class FunctionException(BotBaseException):
+    """暂不支持该方法传递"""
     pass
 
 

@@ -3,7 +3,7 @@ import inspect
 from tokenize import group
 from aiohttp import ClientSession, ClientWebSocketResponse
 import asyncio
-from typing import Awaitable, Dict, List, Optional, Union, AsyncGenerator
+from typing import Awaitable, BinaryIO, Dict, List, Optional, Union, AsyncGenerator
 
 import aiohttp
 from karas.util import status_code_exception
@@ -14,7 +14,7 @@ from karas.messages import MessageBase
 from karas.event import Auto_Switch_Event, EventBase, MemberJoinRequestEvent, NewFriendRequestEvent, RequestEvent, Event, NudgeEvent
 from karas.elements import ElementBase, File, FlashImage, GroupConfig, Image, MemberInfo, Plain, Source, Voice, FriendProfile, MemberProfile, \
     BotProfile, UserProfile
-from karas.exceptions import ConnectException
+from karas.exceptions import ConnectException, FunctionException
 from karas.util.Logger import Logging
 from karas.util.network import error_throw, URL_Route, wrap_data_json
 
@@ -373,7 +373,33 @@ class Yurine(object):
             )
 
     @error_throw
-    async def uploadMultipart(self, obj: Union["Voice", "File", "Image", "FlashImage"], type: str) -> None:
+    async def uploadFile(self, group: Union[int,Group], file: Union[str,BinaryIO,bytes,None], type: str = "group", path:str = "") -> File:
+        """上传群文件，返回的是上传的该文件对象
+        
+        args:
+            group (int) :上传的群组 
+            file (Union[str,BinaryIO,bytes,None]) : 要上传的文件，可以是路径或者一个已经打开了的二进制文件读取流
+            path (str) :上传到群组指定的文件路径，默认为根目录
+
+        Returns:
+            File: 上传的文件对象
+        """
+        async with self.session.post(
+            self.route("/file/upload"),
+            data = {
+                "sessionKey": self.sessionKey,
+                "type": type,
+                "target": str(group if isinstance(group,int) else group.id),
+                "path":path,
+                "file": open(file,"rb") if isinstance(file,str) else file
+            }
+        ) as _response:
+            parsed_data = await self._raise_status(await _response.json())
+            return File(**parsed_data)
+
+    @error_throw
+    async def uploadMultipart(self, obj: Union["Voice", "Image", "FlashImage"], type: str) -> None:
+        """上传多媒体类型文件(语音, 图片),该方法仅作为上传方法，发送请使用sendXxxx(xxx,[Voice(file=xxx)])形式"""
         uploadType = "Image" if isinstance(obj, FlashImage) else obj.type
         async with self.session.post(
                 self.route(f"upload{uploadType}"),
@@ -384,12 +410,14 @@ class Yurine(object):
                         obj.file, str) else obj.file
                 }
         ) as _response:
-            _response_json = await _response.json()
-            obj(**_response_json)
+            parsed_data = await self._raise_status(await _response.json())
+            obj(**parsed_data)
 
-    async def _element_check(self, element: "ElementBase", type: str):
-        if isinstance(element, (Image, Voice, File, FlashImage)):
+    async def _element_check(self, element: "ElementBase", type: str, target: Union[int,Group,None] = None):
+        if isinstance(element, (Image, Voice, FlashImage)):
             await self.uploadMultipart(element, type=type)
+        if isinstance(element,File):
+            raise FunctionException("文件上传请使用uploadFile方法，该方法仅支持发送消息")
         return element.elements
 
     @error_throw
@@ -422,7 +450,7 @@ class Yurine(object):
         Returns:
             int: 一个Int类型属性，标识本条消息，用于撤回和引用回复
         """
-        _chain = [(await self._element_check(_e, type="group")) for _e in Elements] \
+        _chain = [(await self._element_check(_e, type="group", target=group)) for _e in Elements] \
             if not isinstance(Elements, MessageChain) else Elements.parse_to_json()
         content = await _build_content_json("group", group, quote, _chain)
         await self.ws.send_json(
@@ -804,7 +832,7 @@ class Yurine(object):
                 }
             )
         )
-        return self._raise_status()
+        return await self._raise_status()
 
     @error_throw
     async def fileDelete(
@@ -833,7 +861,7 @@ class Yurine(object):
                 }
             )
         )
-        return self._raise_status()
+        return await self._raise_status()
 
     @error_throw
     async def fileMove(
@@ -873,7 +901,7 @@ class Yurine(object):
                 }
             )
         )
-        return self._raise_status()
+        return await self._raise_status()
 
     @error_throw
     async def fileRename(
@@ -927,7 +955,7 @@ class Yurine(object):
                 }
             )
         )
-        return self._raise_status()
+        return await self._raise_status()
 
     @error_throw
     async def mute(
@@ -1034,7 +1062,7 @@ class Yurine(object):
                 }
             )
         )
-        return self._raise_status()
+        return await self._raise_status()
 
     @error_throw
     async def muteAll(
@@ -1057,7 +1085,7 @@ class Yurine(object):
                 }
             )
         )
-        return self._raise_status()
+        return await self._raise_status()
 
     @error_throw
     async def unmuteAll(
@@ -1081,7 +1109,7 @@ class Yurine(object):
                 }
             )
         )
-        return self._raise_status()
+        return await self._raise_status()
 
     @error_throw
     async def setEssence(
@@ -1361,15 +1389,15 @@ class Yurine(object):
                 self.logging.debug(f"canceled <task {id(_task)}>")
 
     # @error_throw
-    async def _raise_status(self) -> Dict:
-        _json_data = await self.ws.receive_json()
+    async def _raise_status(self, data:Optional[Dict] = None) -> Dict:
+        _json_data = data or await self.ws.receive_json()
         self.logging.debug(f"recv data {_json_data}")
         _data = _json_data.get("data")
-        _status_code = _json_data.get("code") or _data.get("code")
+        _status_code = _json_data.get("code") or (_data and _data.get("code"))
         _exception = status_code_exception.get(_status_code or 0)
         if _exception is not None:
             raise _exception(_data.get("msg"))
-        return _data.get("data") or _data or _data.get("msg")
+        return _json_data.get("data") or _data or (_data and _data.get("msg")) or _json_data
 
     def run_forever(self) -> None:
         """挂起"""

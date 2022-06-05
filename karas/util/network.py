@@ -6,7 +6,7 @@ import aiohttp
 from aiohttp.web_exceptions import HTTPRequestTimeout
 from functools import wraps
 from karas.Sender import ReceptorBase
-from karas.exceptions import BotBaseException, ConnectException
+from karas.exceptions import BotBaseException, ConnectException, FunctionException
 
 
 def error_throw(func: Awaitable):
@@ -31,6 +31,10 @@ def error_throw(func: Awaitable):
                     await asyncio.sleep(5)
             await obj.stop()
             raise ce
+        except FunctionException:
+            obj.logging.error("Function Error")
+            traceback.print_exc()
+            pass
         except (BotBaseException) as be:
             await obj.session.close()
             raise be
