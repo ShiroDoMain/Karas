@@ -9,7 +9,7 @@ from karas.Sender import ReceptorBase
 from karas.exceptions import BotBaseException, ConnectException, FunctionException
 
 
-def error_throw(func: Awaitable):
+def error_throw(func):
     @wraps(func)
     async def _wrapper(obj: "Yurine", *args, **kwargs):
         try:
@@ -40,6 +40,9 @@ def error_throw(func: Awaitable):
             raise be
         except HTTPRequestTimeout as exc:
             obj.logging.error(f"{func.__name__} timeout")
+        except Exception as exc:
+            obj.logging.error(f"Unknown error {exc}")
+            raise
 
     return _wrapper
 

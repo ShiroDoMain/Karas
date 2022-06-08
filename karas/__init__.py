@@ -117,12 +117,11 @@ class Yurine(object):
         self.route = URL_Route(self.url)
         self.logging = Logging(
             loggerLevel, qq, filename=logFileName, logFile=logToFile)
-        self._loop = loop or asyncio.get_event_loop()
+        self._loop = loop or self._get_event_loop()
         self.karas = karas or Karas
 
-        self.is_running = False
+        self._is_running = False
         self._receiver_is_running = False
-        self.start()
 
     @property
     def host(self):
@@ -147,6 +146,17 @@ class Yurine(object):
     @property
     def verifyKey(self):
         return self._verifyKey
+
+    @property
+    def is_running(self):
+        return self._is_running
+
+    def _get_event_loop(self):
+        try:
+            _loop = asyncio.get_running_loop()
+        except RuntimeError:
+            _loop = asyncio.get_event_loop()
+        return _loop
 
     @error_throw
     async def _initialization(self) -> None:
@@ -373,9 +383,9 @@ class Yurine(object):
             )
 
     @error_throw
-    async def uploadFile(self, group: Union[int,Group], file: Union[str,BinaryIO,bytes,None], type: str = "group", path:str = "") -> File:
+    async def uploadFile(self, group: Union[int, Group], file: Union[str, BinaryIO, bytes, None], type: str = "group", path: str = "") -> File:
         """上传群文件，返回的是上传的该文件对象
-        
+
         args:
             group (int) :上传的群组 
             file (Union[str,BinaryIO,bytes,None]) : 要上传的文件，可以是路径或者一个已经打开了的二进制文件读取流
@@ -386,12 +396,12 @@ class Yurine(object):
         """
         async with self.session.post(
             self.route("/file/upload"),
-            data = {
+            data={
                 "sessionKey": self.sessionKey,
                 "type": type,
-                "target": str(group if isinstance(group,int) else group.id),
-                "path":path,
-                "file": open(file,"rb") if isinstance(file,str) else file
+                "target": str(group if isinstance(group, int) else group.id),
+                "path": path,
+                "file": open(file, "rb") if isinstance(file, str) else file
             }
         ) as _response:
             parsed_data = await self._raise_status(await _response.json())
@@ -413,10 +423,10 @@ class Yurine(object):
             parsed_data = await self._raise_status(await _response.json())
             obj(**parsed_data)
 
-    async def _element_check(self, element: "ElementBase", type: str, target: Union[int,Group,None] = None):
+    async def _element_check(self, element: "ElementBase", type: str, target: Union[int, Group, None] = None):
         if isinstance(element, (Image, Voice, FlashImage)):
             await self.uploadMultipart(element, type=type)
-        if isinstance(element,File):
+        if isinstance(element, File):
             raise FunctionException("文件上传请使用uploadFile方法，该方法仅支持发送消息")
         return element.elements
 
@@ -429,12 +439,11 @@ class Yurine(object):
             )
         )
         version = await self._raise_status()
-        return version.get("version")
-
+        return version.get("data").get("version")
 
     @error_throw
     async def sendGroup(
-            self, 
+            self,
             group: Union[int, "Group"],
             Elements: Union[List[Union[ElementBase, MessageChain]], MessageChain],
             quote: Union[int, Source] = None
@@ -1389,7 +1398,7 @@ class Yurine(object):
                 self.logging.debug(f"canceled <task {id(_task)}>")
 
     # @error_throw
-    async def _raise_status(self, data:Optional[Dict] = None) -> Dict:
+    async def _raise_status(self, data: Optional[Dict] = None) -> Dict:
         _json_data = data or await self.ws.receive_json()
         self.logging.debug(f"recv data {_json_data}")
         _data = _json_data.get("data")
@@ -1402,7 +1411,7 @@ class Yurine(object):
     def run_forever(self) -> None:
         """挂起"""
         self.logging.debug("run_forever")
-        if not self.is_running:
+        if not self._is_running:
             self.stcart()
         if not self._receiver_is_running:
             self.loop.create_task(self._receiver())
@@ -1415,15 +1424,25 @@ class Yurine(object):
         finally:
             self.close()
 
-    def start(self) -> int:
+    def start(self) -> Optional["Yurine"]:
         self.logging.debug("running function start")
-        if self.is_running:
-            return 0
+        if self._is_running:
+            return None
         self.logging.info(f"initialization......")
         _code = self.loop.run_until_complete(self._initialization())
         self.logging.debug(f"initialization {_code}")
-        self.is_running = True
-        return 0
+        self._is_running = True
+        return self
+
+    async def astart(self) -> Optional["Yurine"]:
+        self.logging.debug("running function start")
+        if self._is_running:
+            return None
+        self.logging.info(f"initialization......")
+        _code = await self._initialization()
+        self.logging.debug(f"initialization {_code}")
+        self._is_running = True
+        return self
 
     def close(self) -> None:
         """关闭"""
@@ -1434,7 +1453,18 @@ class Yurine(object):
             self.loop.close()
         except RuntimeError:
             pass
-        self.logging.debug(f"loop closed is  {self.loop.is_closed()}")
+        self.logging.debug(f"loop closed {self.loop.is_closed()}")
+
+    async def aclose(self) -> None:
+        """关闭"""
+        if self.loop.is_closed():
+            return
+        await self.stop()
+        try:
+            self.loop.close()
+        except RuntimeError:
+            pass
+        self.logging.debug(f"loop closed  {self.loop.is_closed()}")
 
     async def stop(self) -> int:
         """停止所有运行中的事件"""
@@ -1450,21 +1480,27 @@ class Yurine(object):
             self.logging.info("Session closed")
         return 0
 
-    async def __aenter__(self):
-        self.logging.debug("enter service")
-        if not self.is_running:
-            self.start()
-        return self
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        self.logging.debug("exiting service")
-        await self.stop()
-        self.logging.info("exit")
+    def __del__(self):
+        self.close()
 
     def __enter__(self):
-        if not self.is_running:
+        self.logging.debug("enter")
+        if not self._is_running:
             self.start()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
+        # self._is_running = False
+        # self.close()
+        self.logging.debug("exit")
+
+    async def __aenter__(self):
+        self.logging.debug("aenter")
+        if not self._is_running:
+            await self.astart()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        # self._is_running = False
+        # await self.aclose()
+        self.logging.debug("aexit")

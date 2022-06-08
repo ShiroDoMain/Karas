@@ -4,7 +4,7 @@ import ctypes
 import sys
 import os
 import time
-from typing import Union
+from typing import Any, Callable, List, Optional, Union
 
 
 class WindowsCMD(Enum):
@@ -80,9 +80,31 @@ class Logging:
         self.handle.setLevel(level=loggerLevel.upper())
         self._logFile = logFile
         self.filename = filename
+        self._callbasks = {}
         if (self.filename is None or logFile) and not os.path.exists("logs"):
             os.mkdir("logs")
         self.logging.addHandler(hdlr=self.handle)
+
+    @property
+    def callbacks(self) -> List:
+        return list(self._callbasks.keys())
+
+    def addCallback(self, callback: Callable, namespace: Optional[str] = None, *args, **kwargs) -> None:
+        """add a callback
+            callback(logText:str, logLevel:str,*args, **kwargs)
+
+        """
+        namespace = namespace or callback.__name__
+        self._callbasks[namespace] = (callback, args, kwargs)
+
+    def removeCallback(self, callable: Union[str, Callable]) -> bool:
+        """remove callback, if not return false"""
+        namespace = callable if isinstance(
+            callable, str) else callable.__name__
+        if namespace not in self.callbacks:
+            return False
+        del self._callbasks[namespace]
+        return True
 
     def _wirte(self, text, _localtime) -> None:
         with open(self.filename or time.strftime("logs/%Y-%m-%d.log", _localtime), "a") as f:
@@ -92,8 +114,11 @@ class Logging:
         current_time = time.localtime()
         color = _color if _color else ""
         color_end = '\033[0m' if color else ""
-        _format = f"{color}{time.strftime('%Y-%M-%d %H:%m:%S', current_time)}-[{level}]-{name}/{qq or self.botId}: {msg}{color_end}"
         _log = f"{time.strftime('%Y-%M-%d %H:%m:%S', current_time)}-[{level}]-{name}/{qq or self.botId}: {msg}"
+        _format = f"{color}{_log}{color_end}"
+        if self.callbacks:
+            for cb, args, kws in self.callbacks.values():
+                cb(_log, level, *args, **kws)
         self._wirte(_log, current_time)
         return _format
 
