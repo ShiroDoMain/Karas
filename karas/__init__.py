@@ -3,7 +3,7 @@ import inspect
 from tokenize import group
 from aiohttp import ClientSession, ClientWebSocketResponse
 import asyncio
-from typing import Awaitable, BinaryIO, Dict, List, Optional, Union, AsyncGenerator
+from typing import Awaitable, BinaryIO, Callable, Dict, List, Optional, Tuple, Union, AsyncGenerator
 
 import aiohttp
 from karas.util import status_code_exception
@@ -19,7 +19,7 @@ from karas.util.Logger import Logging
 from karas.util.network import error_throw, URL_Route, wrap_data_json
 
 
-__version__ = "0.1.6"
+__version__ = "0.1.6-dev"
 
 
 async def _build_content_json(
@@ -64,8 +64,12 @@ class Karas(object):
         if cls.listeners.get(message.type) is None:
             return
         for listener in cls.listeners.get(message.type):
+            ca, cb, cb_args = listener
+            if cb:
+                cb_args = cb_args or ()
+                cb(message.raw, *cb_args)
             _message_dict = message.__dict__
-            _func_params = listener.__annotations__
+            _func_params = ca.__annotations__
 
             _reversed = {_v if isinstance(type, type(_v)) else type(
                 _v): _k for _k, _v in _message_dict.items()}
@@ -75,10 +79,10 @@ class Karas(object):
             for k, t in _func_params.items():
                 if t in _types:
                     _o[k] = _message_dict[_reversed[t]]
-            if inspect.iscoroutinefunction(listener):
-                await listener(**_o)
+            if inspect.iscoroutinefunction(ca):
+                await ca(**_o)
             else:
-                listener(**_o)
+                ca(**_o)
 
 
 @async_to_sync_wrap
@@ -237,11 +241,19 @@ class Yurine(object):
                 _event = await _parser.__anext__()
                 await _parser.asend(self.account == _event.event.fromId) \
                     if isinstance(_event, Event) else await _parser.asend(False)
+            else:
+                self.logging.debug(f"Unknown event:{_receive_data}")
 
-    def listen(self, registerEvent: Union[str, "EventBase", "MessageBase"]):
+    def listen(self, registerEvent: Union[str, "EventBase", "MessageBase"], callback: Callable = None, cb_args: Optional[Tuple] = None):
         """事件装饰器
         Args:
             registerEvent (str, Event, Message): 要监听的事件或者消息类型
+            callback: 设定一个callback,当监听到指定事件会将该事件原始数据(Dict)作为第一个参数传入
+            cb_args:传入到callback的其他参数
+
+            callback用法:
+            def callback(eventData: Dict, arg1, arg2,...) -> ...: ...
+            @listen(GroupMessage, callback=callback, cb_args=(a1,a2,a3)0) -> None:...
 
         Returns:
             None: NoReturn
@@ -250,15 +262,15 @@ class Yurine(object):
             registerEvent = registerEvent if isinstance(
                 registerEvent, str) else registerEvent.type
 
-        def register_decorator(Callable: Awaitable):
+        def register_decorator(callable: Awaitable):
             def register_wrapper(*args, **kwargs):
                 self.logging.debug(
-                    f"register listener [{Callable.__name__}] for Event[{registerEvent}]"
+                    f"register listener [{callable.__name__}] for Event[{registerEvent}]"
                 )
                 if Karas.listeners.get(registerEvent):
-                    Karas.listeners.get(registerEvent).append(Callable)
+                    Karas.listeners.get(registerEvent).append((callable, callback, cb_args))
                 else:
-                    Karas.listeners[registerEvent] = [Callable, ]
+                    Karas.listeners[registerEvent] = [(callable,callback, cb_args) ]
             return register_wrapper()
         return register_decorator
 
@@ -1412,7 +1424,7 @@ class Yurine(object):
         """挂起"""
         self.logging.debug("run_forever")
         if not self._is_running:
-            self.stcart()
+            self.start()
         if not self._receiver_is_running:
             self.loop.create_task(self._receiver())
             self.logging.info(f"receiver created")

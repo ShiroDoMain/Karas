@@ -15,13 +15,6 @@ class MessageBase(BaseModel):
     sender: Union["ElementBase", "Sender", "Member", "Friend", "Subject"]
     messageChain: MessageChain
 
-    # def __init__(self, *args,**kwargs) -> None:
-    #     for _k,_v in kwargs.items():
-    #         _type = self.__annotations__.get(_k)
-    #         if not isinstance(_v,_type):
-    #             _v = _type(**_v) if _k != "messageChain" else _type(*_v)
-    #         setattr(self,_k,_v)
-
     def __str__(self) -> str:
         return self.messageChain.to_str()
 

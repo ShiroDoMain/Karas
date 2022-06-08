@@ -13,6 +13,7 @@ class BaseModel(metaclass=MetaBase):
     type: str
 
     def __init__(self, **kws) -> None:
+        self._data = kws
         for _k, _v in kws.items():
             _k = _k if _k != "from" else "From"
             _type = self.__annotations__.get(_k)
@@ -36,20 +37,22 @@ class BaseModel(metaclass=MetaBase):
         _obj = cls(**_filted)
         return _obj
 
+    raw = property(lambda obj: obj._data, ..., ...)
+
     def __str__(self) -> str:
         return self.__dict__.__str__()
 
 
 status_code_exception = {
-    0:None,
-    1:VerifyException,
-    2:BotNotFoundException,
-    3:SessionInvalidationException,
-    4:SessionUnauthorizedException,
-    5:TargetNotFoundException,
-    6:FileNotFoundException,
-    10:PermissionException,
-    20:BotMutedException,
-    30:MessageTooLongException,
-    400:InvalidArgumentException
+    0: None,
+    1: VerifyException,
+    2: BotNotFoundException,
+    3: SessionInvalidationException,
+    4: SessionUnauthorizedException,
+    5: TargetNotFoundException,
+    6: FileNotFoundException,
+    10: PermissionException,
+    20: BotMutedException,
+    30: MessageTooLongException,
+    400: InvalidArgumentException
 }

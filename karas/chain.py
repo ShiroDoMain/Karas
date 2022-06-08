@@ -6,6 +6,7 @@ from typing import List, Any, Dict, Optional, Union
 
 class MessageChain(BaseModel):
     def __init__(self, *chain) -> None:
+        self._data = chain
         for _element in chain:
             _element_type = _element.get("type")
             _attr_obj = MessageElementEnum[_element_type].value(**_element) \
@@ -22,7 +23,7 @@ class MessageChain(BaseModel):
         """
         _elements = []
         for attr in self.__dict__.keys():
-            if attr == "Source":
+            if attr == "Source" or attr.startswith("_"):
                 continue
             _elements += [_e.elements for _e in self.fetch(attr)]
         return _elements
@@ -95,7 +96,8 @@ class MessageChain(BaseModel):
 
     def _get_elements(self) -> List[ElementBase]:
         _elements = []
-        for _e in self.__dict__.values():
+        _chain = (_V for _K,_V in self.__dict__.items() if not _K.startswith("_"))
+        for _e in _chain:
             _elements += _e
         return _elements
 
