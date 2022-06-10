@@ -1,3 +1,5 @@
+import hashlib
+from time import time
 from karas.exceptions import *
 from karas.permission import PermissionEnum
 
@@ -20,7 +22,8 @@ class BaseModel(metaclass=MetaBase):
             try:
                 if _type and _v is not None and not isinstance(_v, _type):
                     _v = PermissionEnum[_v].value \
-                        if _k in ("origin", "current") else _type(*_v) if _k == "messageChain" else _type(**_v)
+                        if _k in ("origin", "current") and isinstance(_v,str) else _type(*_v) \
+                        if _k in ("origin", "current", "messageChain") else _type(**_v)
             except Exception as e:
                 # print(_k, ":", _v, "=>", _type)
                 # print(self.__annotations__)
@@ -54,5 +57,15 @@ status_code_exception = {
     10: PermissionException,
     20: BotMutedException,
     30: MessageTooLongException,
-    400: InvalidArgumentException
+    400: InvalidArgumentException,
+    500: UnknownException
 }
+
+
+class DefaultNamespace:
+    def __init__(self) -> None:
+        pass
+
+    @classmethod
+    def gen(self) -> str:
+        return hashlib.md5(str(time()).encode()).hexdigest()[:8]

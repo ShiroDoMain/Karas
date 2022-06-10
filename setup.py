@@ -8,7 +8,7 @@ with open("README.md","r") as f:
 
 setup(
     name="karas_py",
-    version=karas.__version__,
+    version="0.1.7",  # karas.__version__,
     author="ShiroDoMain",
 
     keywords="qqbot async",

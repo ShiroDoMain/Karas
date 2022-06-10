@@ -1,5 +1,6 @@
 from enum import Enum
 from typing import Optional, Union
+from karas.chain import MessageChain
 
 from karas.util import BaseModel
 
@@ -467,6 +468,42 @@ class CommandExecutedEvent(EventBase):
     args: dict
 
 
+class FriendSyncMessage(EventBase):
+    """好友同步消息"""
+    type: str = "FriendSyncMessage"
+    messageChain: MessageChain
+
+    def __str__(self) -> str:
+        return super().__str__()+": "+self.messageChain.__str__()
+
+
+class GroupSyncMessage(EventBase):
+    """群组同步消息"""
+    type: str = "GroupSyncMessage"
+    messageChain: MessageChain
+
+    def __str__(self) -> str:
+        return super().__str__()+": " + self.messageChain.__str__()
+
+
+class TempSyncMessage(EventBase):
+    """临时同步消息"""
+    type: str = "TempSyncMessage"
+    messageChain: MessageChain
+
+    def __str__(self) -> str:
+        return super().__str__()+": " + self.messageChain.__str__()
+
+
+class StrangerSyncMessage(EventBase):
+    """陌生人同步消息"""
+    type: str = "StrangerSyncMessage"
+    messageChain: MessageChain
+
+    def __str__(self) -> str:
+        return super().__str__()+": " + self.messageChain.__str__()
+
+
 class EventEnum(Enum):
     BotOnlineEvent: "BotOnlineEvent" = BotOnlineEvent
     BotOfflineEventActive: "BotOfflineEventActive" = BotOfflineEventActive
@@ -508,6 +545,11 @@ class EventEnum(Enum):
     OtherClientOnlineEvent: "OtherClientOnlineEvent" = OtherClientOnlineEvent
     OtherClientOfflineEvent: "OtherClientOfflineEvent" = OtherClientOfflineEvent
     CommandExecutedEvent: "CommandExecutedEvent" = CommandExecutedEvent
+
+    FriendSyncMessage: "FriendSyncMessage" = FriendSyncMessage
+    GroupSyncMessage: "GroupSyncMessage" = GroupSyncMessage
+    TempSyncMessage: "TempSyncMessage" = TempSyncMessage
+    StrangerSyncMessage: "StrangerSyncMessage" = StrangerSyncMessage
 
 
 class Auto_Switch_Event(object):

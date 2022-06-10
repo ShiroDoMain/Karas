@@ -22,6 +22,7 @@ __all__ : Tuple[str]= (
     "TargetNotFoundException",
     "VerifyException",
     "FunctionException",
+    "UnknownException",
 )
 
 
@@ -91,4 +92,9 @@ class MessageTooLongException(BotBaseException):
 
 class InvalidArgumentException(BotBaseException):
     """错误的访问，如参数错误等"""
+    pass
+
+
+class UnknownException(BotBaseException):
+    """额。。。为啥呢..."""
     pass

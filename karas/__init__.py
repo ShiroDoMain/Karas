@@ -1,12 +1,9 @@
-from asyncio.log import logger
 import inspect
-from tokenize import group
 from aiohttp import ClientSession, ClientWebSocketResponse
 import asyncio
 from typing import Awaitable, BinaryIO, Callable, Dict, List, Optional, Tuple, Union, AsyncGenerator
-
 import aiohttp
-from karas.util import status_code_exception
+from karas.util import DefaultNamespace, status_code_exception
 from karas.util.sync import async_to_sync_wrap
 from karas.chain import MessageChain
 from karas.Sender import Friend, Group, Member, Stranger, ReceptorBase, Announcement
@@ -41,6 +38,7 @@ class Karas(object):
         负责处理消息事件
     """
     listeners = {}
+    loop: asyncio.AbstractEventLoop = None
 
     @classmethod
     async def event_parse(cls, original: dict, _logger: Logging = None) -> AsyncGenerator:
@@ -80,7 +78,7 @@ class Karas(object):
                 if t in _types:
                     _o[k] = _message_dict[_reversed[t]]
             if inspect.iscoroutinefunction(ca):
-                await ca(**_o)
+                cls.loop.create_task(ca(**_o))
             else:
                 ca(**_o)
 
@@ -123,9 +121,13 @@ class Yurine(object):
             loggerLevel, qq, filename=logFileName, logFile=logToFile)
         self._loop = loop or self._get_event_loop()
         self.karas = karas or Karas
+        self.karas.loop = self.loop
+
+        self.namespace = DefaultNamespace
 
         self._is_running = False
         self._receiver_is_running = False
+        self._receivData = {}
 
     @property
     def host(self):
@@ -234,13 +236,17 @@ class Yurine(object):
         """事件监听器"""
         self._receiver_is_running = True
         while True:
-            _receive_data: dict = await self.ws.receive_json()
-            if _receive_data.get("syncId") == "-1":
+            _receive_data: Dict = await self.ws.receive_json()
+            syncId = _receive_data.get("syncId")
+            if syncId == "-1":
                 _parser = self.karas.event_parse(
                     _receive_data["data"], self.logging)
                 _event = await _parser.__anext__()
                 await _parser.asend(self.account == _event.event.fromId) \
                     if isinstance(_event, Event) else await _parser.asend(False)
+            elif syncId:
+                self.logging.debug(f"sync Event {_receive_data}")
+                self._receivData[syncId] = _receive_data
             else:
                 self.logging.debug(f"Unknown event:{_receive_data}")
 
@@ -287,7 +293,7 @@ class Yurine(object):
             message (str, optional): 同意该请求时附带的消息. Defaults to None.
         """
         if not isinstance(requestEvent, RequestEvent):
-            logger.error("非法请求")
+            self.logging.error("非法请求")
         else:
             requestEvent.message = message
             await self.ws.send_json(
@@ -311,7 +317,7 @@ class Yurine(object):
             message (str, optional): 拒绝该请求时附带的消息. Defaults to None.
         """
         if not isinstance(requestEvent, RequestEvent):
-            logger.error("非法请求")
+            self.logging.error("非法请求")
         else:
             requestEvent.message = message
             await self.ws.send_json(
@@ -335,7 +341,7 @@ class Yurine(object):
             message (str, optional): 拒绝该请求时附带的消息. Defaults to None.
         """
         if not isinstance(requestEvent, [NewFriendRequestEvent, MemberJoinRequestEvent]):
-            logger.error("非法请求")
+            self.logging.error("非法请求")
         else:
             requestEvent.message = message
             await self.ws.send_json(
@@ -359,7 +365,7 @@ class Yurine(object):
             message (str, optional): 忽略该请求时附带的消息. Defaults to None.
         """
         if not isinstance(requestEvent, RequestEvent):
-            logger.error("非法请求")
+            self.logging.error("非法请求")
         else:
             requestEvent.message = message
             await self.ws.send_json(
@@ -383,7 +389,7 @@ class Yurine(object):
             message (str, optional): 忽略该请求时附带的消息. Defaults to None.
         """
         if not isinstance(requestEvent, RequestEvent):
-            logger.error("非法请求")
+            self.logging.error("非法请求")
         else:
             requestEvent.message = message
             await self.ws.send_json(
@@ -445,12 +451,14 @@ class Yurine(object):
     @error_throw
     async def about(self):
         """获取mirai-api-http的版本"""
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
+                syncId=syncId,
                 command="about",
             )
         )
-        version = await self._raise_status()
+        version = await self._raise_status(syncId=syncId)
         return version.get("data").get("version")
 
     @error_throw
@@ -474,14 +482,15 @@ class Yurine(object):
         _chain = [(await self._element_check(_e, type="group", target=group)) for _e in Elements] \
             if not isinstance(Elements, MessageChain) else Elements.parse_to_json()
         content = await _build_content_json("group", group, quote, _chain)
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
-                syncId="sendGroupMessage",
+                syncId=syncId,
                 command="sendGroupMessage",
                 content=content
             ))
         self.logging.info(f"bot <= {MessageChain(*_chain).to_str()}")
-        echo = await self._raise_status()
+        echo = await self._raise_status(syncId=syncId)
         return echo.get("messageId")
 
     @error_throw
@@ -506,15 +515,16 @@ class Yurine(object):
         _chain = [(await self._element_check(_e, type="friend")) for _e in Elements] \
             if not isinstance(Elements, MessageChain) else Elements.parse_to_json()
         content = await _build_content_json("target", friend, quote, _chain)
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
-                syncId="sendFriendMessage",
+                syncId=syncId,
                 command="sendFriendMessage",
                 content=content
             )
         )
         self.logging.info(f"Bot <= {MessageChain(*_chain).to_str()}")
-        echo = await self._raise_status()
+        echo = await self._raise_status(syncId=syncId)
         return echo.get("messageId")
 
     @error_throw
@@ -546,15 +556,16 @@ class Yurine(object):
             quote: quote and quote.id,
             "messageChain": _chain
         }
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
-                syncId="sendTempMessage",
+                syncId=syncId,
                 command="sendTempMessage",
                 content=content
             )
         )
         self.logging.info(f"bot <= {MessageChain(*_chain).to_str()}")
-        echo = await self._raise_status()
+        echo = await self._raise_status(syncId=syncId)
         return echo.get("messageId")
 
     @error_throw
@@ -600,9 +611,10 @@ class Yurine(object):
             else target.group if isinstance(target, Member) else target.id
         kind = kind if kind is not None else event.subject.kind if event is not None \
             else target.group.type if isinstance(target, Member) else target.type
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
-                syncId="sendNudge",
+                syncId=syncId,
                 command="sendNudge",
                 content={
                     "target": target,
@@ -610,7 +622,7 @@ class Yurine(object):
                     "kind": kind
                 }))
         self.logging.info(f"Bot <= NudgeEvent:{subject}")
-        data = await self._raise_status()
+        data = await self._raise_status(syncId=syncId)
         return data
 
     @error_throw
@@ -626,15 +638,17 @@ class Yurine(object):
         Returns:
             Optional[MessageChain]: 包含该条消息的消息链，如果该消息未被缓存返回None
         """
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
+                syncId=syncId,
                 command="messageFromId",
                 content={
                     "id": messageId
                 }
             )
         )
-        message = await self._raise_status()
+        message = await self._raise_status(syncId=syncId)
         return message and MessageChain(*message.get("messageChain"))
 
     @error_throw
@@ -642,12 +656,14 @@ class Yurine(object):
         """
         获取好友列表
         """
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
+                syncId=syncId,
                 command="friendList"
             )
         )
-        data = await self._raise_status()
+        data = await self._raise_status(syncId=syncId)
         return data and [Friend(**friend) for friend in data.get("data")]
 
     @error_throw
@@ -658,15 +674,17 @@ class Yurine(object):
         """
         获取好友详细资料
         """
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
+                syncId=syncId,
                 command="friendProfile",
                 content={
                     "target": friend if isinstance(friend, int) else friend.id
                 }
             )
         )
-        friend = await self._raise_status()
+        friend = await self._raise_status(syncId=syncId)
         return friend and FriendProfile(**friend)
 
     @error_throw
@@ -674,12 +692,14 @@ class Yurine(object):
         """
         获取群列表
         """
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
+                syncId=syncId,
                 command="groupList"
             )
         )
-        data = await self._raise_status()
+        data = await self._raise_status(syncId=syncId)
         return data and [Group(**group) for group in data.get("data")]
 
     @error_throw
@@ -690,15 +710,17 @@ class Yurine(object):
         """
         获取群成员列表
         """
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
+                syncId=syncId,
                 command="memberList",
                 content={
                     "target": group if isinstance(group, int) else group.id
                 }
             )
         )
-        data = await self._raise_status()
+        data = await self._raise_status(syncId=syncId)
         return data and [Member(**member) for member in data.get("data")]
 
     @error_throw
@@ -710,8 +732,10 @@ class Yurine(object):
         """
         获取成员详细资料
         """
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
+                syncId=syncId,
                 command="memberProfile",
                 content={
                     "target": group if isinstance(group, int) else group.id,
@@ -719,7 +743,7 @@ class Yurine(object):
                 }
             )
         )
-        data = await self._raise_status()
+        data = await self._raise_status(syncId=syncId)
         return data and MemberProfile(**data)
 
     @error_throw
@@ -727,12 +751,14 @@ class Yurine(object):
         """
         获取bot详细资料
         """
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
+                syncId=syncId,
                 command="botProfile"
             )
         )
-        data = await self._raise_status()
+        data = await self._raise_status(syncId=syncId)
         return data and BotProfile(**data)
 
     @error_throw
@@ -740,15 +766,17 @@ class Yurine(object):
         """
         获取用户详细资料
         """
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
+                syncId=syncId,
                 command="userProfile",
                 content={
                     "target": target
                 }
             )
         )
-        data = await self._raise_status()
+        data = await self._raise_status(syncId=syncId)
         return data and UserProfile(**data)
 
     @error_throw
@@ -774,8 +802,10 @@ class Yurine(object):
         Returns:
             Optional[List[File]]: 一个文件对象列表
         """
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
+                syncId=syncId,
                 command="file_list",
                 content={
                     "id": id,
@@ -787,7 +817,7 @@ class Yurine(object):
                 }
             )
         )
-        data = await self._raise_status()
+        data = await self._raise_status(syncId=syncId)
         return data and [File(**file) for file in data]
 
     @error_throw
@@ -809,8 +839,10 @@ class Yurine(object):
         Returns:
             Optional[File]: 一个文件对象
         """
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
+                syncId=syncId,
                 command="file_info",
                 content={
                     "id": id,
@@ -820,7 +852,7 @@ class Yurine(object):
                 }
             )
         )
-        data = await self._raise_status()
+        data = await self._raise_status(syncId=syncId)
         return data and File(**data)
 
     @error_throw
@@ -842,8 +874,10 @@ class Yurine(object):
         Returns:
             Optional[File]: 一个文件对象
         """
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
+                syncId=syncId,
                 command="file_mkdir",
                 content={
                     "id": id,
@@ -853,7 +887,7 @@ class Yurine(object):
                 }
             )
         )
-        return await self._raise_status()
+        return await self._raise_status(syncId=syncId)
 
     @error_throw
     async def fileDelete(
@@ -872,8 +906,10 @@ class Yurine(object):
         Returns:
             str: _description_
         """
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
+                syncId=syncId,
                 command="file_delete",
                 content={
                     "id": id,
@@ -882,7 +918,7 @@ class Yurine(object):
                 }
             )
         )
-        return await self._raise_status()
+        return await self._raise_status(syncId=syncId)
 
     @error_throw
     async def fileMove(
@@ -910,8 +946,10 @@ class Yurine(object):
         """
         if moveTo is None and moveToPath is None:
             raise ValueError("必须选择移动至目标的位置")
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
+                syncId=syncId,
                 command="file_move",
                 content={
                     "id": id,
@@ -922,7 +960,7 @@ class Yurine(object):
                 }
             )
         )
-        return await self._raise_status()
+        return await self._raise_status(syncId=syncId)
 
     @error_throw
     async def fileRename(
@@ -968,15 +1006,17 @@ class Yurine(object):
         Returns:
             str: 
         """
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
+                syncId=syncId,
                 command="deleteFriend",
                 content={
                     "target": friend
                 }
             )
         )
-        return await self._raise_status()
+        return await self._raise_status(syncId=syncId)
 
     @error_throw
     async def mute(
@@ -995,8 +1035,10 @@ class Yurine(object):
         Returns:
             str: 
         """
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
+                syncId=syncId,
                 command="mute",
                 content={
                     "target": group,
@@ -1005,7 +1047,7 @@ class Yurine(object):
                 }
             )
         )
-        return await self._raise_status()
+        return await self._raise_status(syncId=syncId)
 
     @error_throw
     async def unmute(
@@ -1022,8 +1064,10 @@ class Yurine(object):
         Returns:
             str: 
         """
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
+                syncId=syncId,
                 command="unmute",
                 content={
                     "target": group,
@@ -1031,7 +1075,7 @@ class Yurine(object):
                 }
             )
         )
-        return await self._raise_status()
+        return await self._raise_status(syncId=syncId)
 
     @error_throw
     async def kick(
@@ -1050,8 +1094,10 @@ class Yurine(object):
         Returns:
             str: 
         """
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
+                syncId=syncId,
                 command="kick",
                 content={
                     "target": group,
@@ -1060,7 +1106,7 @@ class Yurine(object):
                 }
             )
         )
-        return await self._raise_status()
+        return await self._raise_status(syncId=syncId)
 
     @error_throw
     async def quit(
@@ -1075,15 +1121,17 @@ class Yurine(object):
         Returns:
             str: _description_
         """
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
+                syncId=syncId,
                 command="quit",
                 content={
                     "target": group
                 }
             )
         )
-        return await self._raise_status()
+        return await self._raise_status(syncId=syncId)
 
     @error_throw
     async def muteAll(
@@ -1098,15 +1146,17 @@ class Yurine(object):
         Returns:
             str: 
         """
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
+                syncId=syncId,
                 command="muteAll",
                 content={
                     "target": group,
                 }
             )
         )
-        return await self._raise_status()
+        return await self._raise_status(syncId=syncId)
 
     @error_throw
     async def unmuteAll(
@@ -1122,15 +1172,17 @@ class Yurine(object):
         Returns:
             str: _description_
         """
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
+                syncId=syncId,
                 command="unmuteAll",
                 content={
                     "target": group if isinstance(group, int) else group.id,
                 }
             )
         )
-        return await self._raise_status()
+        return await self._raise_status(syncId=syncId)
 
     @error_throw
     async def setEssence(
@@ -1145,15 +1197,17 @@ class Yurine(object):
         Returns:
             str: 
         """
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
+                syncId=syncId,
                 command="setEssence",
                 content={
                     "target": messageId if isinstance(messageId, int) else messageId.id
                 }
             )
         )
-        return await self._raise_status()
+        return await self._raise_status(syncId=syncId)
 
     @error_throw
     async def fetchGroupConfig(
@@ -1168,8 +1222,10 @@ class Yurine(object):
         Returns:
             Optional[GroupConfig]: 一个群设置对象
         """
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
+                syncId=syncId,
                 command="groupConfig",
                 subCommand="get",
                 content={
@@ -1177,7 +1233,7 @@ class Yurine(object):
                 }
             )
         )
-        config = await self._raise_status()
+        config = await self._raise_status(syncId=syncId)
         return config and GroupConfig(**config)
 
     @error_throw
@@ -1197,8 +1253,10 @@ class Yurine(object):
         """
         if isinstance(config, GroupConfig):
             config = GroupConfig.__dict__
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
+                syncId=syncId,
                 command="groupConfig",
                 subCommand="set",
                 content={
@@ -1207,7 +1265,7 @@ class Yurine(object):
                 }
             )
         )
-        return await self._raise_status()
+        return await self._raise_status(syncId=syncId)
 
     @error_throw
     async def fetchMemberInfo(
@@ -1224,8 +1282,10 @@ class Yurine(object):
         Returns:
             Optional[Member]: 一个Member对象
         """
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
+                syncId=syncId,
                 command="memberInfo",
                 subCommand="get",
                 content={
@@ -1234,7 +1294,7 @@ class Yurine(object):
                 }
             )
         )
-        info = await self._raise_status()
+        info = await self._raise_status(syncId=syncId)
         return info and Member(**info)
 
     @error_throw
@@ -1256,8 +1316,10 @@ class Yurine(object):
         """
         if isinstance(info, MemberInfo):
             info = MemberInfo.elements
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
+                syncId=syncId,
                 command="memberInfo",
                 subCommand="update",
                 content={
@@ -1267,7 +1329,7 @@ class Yurine(object):
                 }
             )
         )
-        return await self._raise_status()
+        return await self._raise_status(syncId=syncId)
 
     @error_throw
     async def setMemberAdmin(
@@ -1286,8 +1348,10 @@ class Yurine(object):
         Returns:
             str: _description_
         """
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
+                syncId=syncId,
                 command="memberAdmin",
                 content={
                     "target": group,
@@ -1296,7 +1360,7 @@ class Yurine(object):
                 }
             )
         )
-        return await self._raise_status()
+        return await self._raise_status(syncId=syncId)
 
     @error_throw
     async def fetchAnnouncement(
@@ -1315,8 +1379,10 @@ class Yurine(object):
         Returns:
             List[Announcement]: 群公告对象
         """
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
+                syncId=syncId,
                 command="anno_list",
                 content={
                     "id": group,
@@ -1325,7 +1391,7 @@ class Yurine(object):
                 }
             )
         )
-        anno_list = await self._raise_status()
+        anno_list = await self._raise_status(syncId=syncId)
         return anno_list and [Announcement(**anno) for anno in anno_list]
 
     @error_throw
@@ -1356,8 +1422,10 @@ class Yurine(object):
         if isinstance(image, Image):
             image = self.uploadMultipart(image, type="group")
             imageUrl = image.url
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
+                syncId=syncId,
                 command="anno_publish",
                 content={
                     "target": group,
@@ -1371,7 +1439,7 @@ class Yurine(object):
                 }
             )
         )
-        anno = await self._raise_status()
+        anno = await self._raise_status(syncId=syncId)
         return anno and Announcement(**anno)
 
     @error_throw
@@ -1389,8 +1457,10 @@ class Yurine(object):
         Returns:
             str: _description_
         """
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
+                syncId=syncId,
                 command="anno_delete",
                 content={
                     "id": group,
@@ -1398,7 +1468,7 @@ class Yurine(object):
                 }
             )
         )
-        return await self._raise_status()
+        return await self._raise_status(syncId=syncId)
 
     async def _raise_task_cancel(self, _task: asyncio.Task) -> None:
         """取消当前事件循环中的任务"""
@@ -1410,8 +1480,12 @@ class Yurine(object):
                 self.logging.debug(f"canceled <task {id(_task)}>")
 
     # @error_throw
-    async def _raise_status(self, data: Optional[Dict] = None) -> Dict:
-        _json_data = data or await self.ws.receive_json()
+    async def _raise_status(self, data: Optional[Dict] = None, syncId: str = None) -> Dict:
+        try:
+            await asyncio.sleep(.1)
+            _json_data = data or (syncId and self._receivData.get(syncId)) or await self.ws.receive_json()
+        except RuntimeError:
+            return await self._raise_status(data=data, syncId=syncId)
         self.logging.debug(f"recv data {_json_data}")
         _data = _json_data.get("data")
         _status_code = _json_data.get("code") or (_data and _data.get("code"))
