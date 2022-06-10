@@ -77,12 +77,6 @@ class OtherClientMessage(MessageBase):
     messageChain: MessageChain
 
 
-class FriendSyncMessage(MessageBase):
-    type: str = "FriendSyncMessage"
-    subject: Subject
-    messageChain: MessageChain
-
-
 class MessageEnum(Enum):
     GroupMessage: "GroupMessage" = GroupMessage
     FriendMessage: "FriendMessage" = FriendMessage

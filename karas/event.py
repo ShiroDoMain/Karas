@@ -4,7 +4,7 @@ from karas.chain import MessageChain
 
 from karas.util import BaseModel
 
-from karas.Sender import Client, Friend, Group, Member, Operator, Subject
+from karas.Sender import Client, Friend, Group, Member, Operator, Stranger, Subject
 from karas.messages import MessageBase, MessageEnum
 from karas.permission import Permission
 
@@ -471,6 +471,7 @@ class CommandExecutedEvent(EventBase):
 class FriendSyncMessage(EventBase):
     """好友同步消息"""
     type: str = "FriendSyncMessage"
+    subject: Friend
     messageChain: MessageChain
 
     def __str__(self) -> str:
@@ -480,6 +481,7 @@ class FriendSyncMessage(EventBase):
 class GroupSyncMessage(EventBase):
     """群组同步消息"""
     type: str = "GroupSyncMessage"
+    subject: Group
     messageChain: MessageChain
 
     def __str__(self) -> str:
@@ -489,6 +491,7 @@ class GroupSyncMessage(EventBase):
 class TempSyncMessage(EventBase):
     """临时同步消息"""
     type: str = "TempSyncMessage"
+    subject: Member
     messageChain: MessageChain
 
     def __str__(self) -> str:
@@ -498,6 +501,7 @@ class TempSyncMessage(EventBase):
 class StrangerSyncMessage(EventBase):
     """陌生人同步消息"""
     type: str = "StrangerSyncMessage"
+    subject: Stranger
     messageChain: MessageChain
 
     def __str__(self) -> str:
