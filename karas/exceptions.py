@@ -23,6 +23,7 @@ __all__ : Tuple[str]= (
     "VerifyException",
     "FunctionException",
     "UnknownException",
+    "ConnectException"
 )
 
 

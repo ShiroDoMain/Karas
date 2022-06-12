@@ -80,6 +80,9 @@ from karas.event import (
     OtherClientOnlineEvent,
     OtherClientOfflineEvent,
     CommandExecutedEvent,
+    FriendSyncMessage,
+    GroupSyncMessage,
+    TempSyncMessage,
 )
 
 from karas.messages import (
@@ -88,5 +91,4 @@ from karas.messages import (
     TempMessage,
     StrangerMessage,
     OtherClientMessage,
-    FriendSyncMessage,
 )

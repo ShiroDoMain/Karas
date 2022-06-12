@@ -11,7 +11,7 @@ from karas.messages import MessageBase
 from karas.event import Auto_Switch_Event, EventBase, MemberJoinRequestEvent, NewFriendRequestEvent, RequestEvent, Event, NudgeEvent
 from karas.elements import ElementBase, File, FlashImage, GroupConfig, Image, MemberInfo, Plain, Source, Voice, FriendProfile, MemberProfile, \
     BotProfile, UserProfile
-from karas.exceptions import ConnectException, FunctionException
+from karas.exceptions import *
 from karas.util.Logger import Logging
 from karas.util.network import error_throw, URL_Route, wrap_data_json
 
@@ -203,9 +203,10 @@ class Yurine(object):
         while True:
             try:
                 await self.ws.ping()
-            except Exception as e:
-                self.logging.warning("connect reset, retry...")
-                await asyncio.sleep(1)
+            except ConnectionResetError:
+                return
+            except Exception:
+                raise
             else:
                 await asyncio.sleep(.5)
 
@@ -236,7 +237,12 @@ class Yurine(object):
         """事件监听器"""
         self._receiver_is_running = True
         while True:
-            _receive_data: Dict = await self.ws.receive_json()
+            try:
+                _receive_data: Dict = await self.ws.receive_json()
+            except (BotBaseException, TypeError):
+                pass
+            except Exception:
+                raise
             syncId = _receive_data.get("syncId")
             if syncId == "-1":
                 _parser = self.karas.event_parse(
@@ -274,9 +280,11 @@ class Yurine(object):
                     f"register listener [{callable.__name__}] for Event[{registerEvent}]"
                 )
                 if Karas.listeners.get(registerEvent):
-                    Karas.listeners.get(registerEvent).append((callable, callback, cb_args))
+                    Karas.listeners.get(registerEvent).append(
+                        (callable, callback, cb_args))
                 else:
-                    Karas.listeners[registerEvent] = [(callable,callback, cb_args) ]
+                    Karas.listeners[registerEvent] = [
+                        (callable, callback, cb_args)]
             return register_wrapper()
         return register_decorator
 
@@ -1479,7 +1487,6 @@ class Yurine(object):
             except asyncio.CancelledError:
                 self.logging.debug(f"canceled <task {id(_task)}>")
 
-    # @error_throw
     async def _raise_status(self, data: Optional[Dict] = None, syncId: str = None) -> Dict:
         try:
             await asyncio.sleep(.1)
@@ -1504,7 +1511,7 @@ class Yurine(object):
             self.logging.info(f"receiver created")
         try:
             self.loop.run_forever()
-        except KeyboardInterrupt:
+        except Exception:
             self.logging.info("Bot closing...")
             raise
         finally:

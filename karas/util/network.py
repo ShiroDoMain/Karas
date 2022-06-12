@@ -35,8 +35,8 @@ def error_throw(func):
             obj.logging.error("Function Error")
             traceback.print_exc()
             pass
-        except (BotBaseException) as be:
-            await obj.session.close()
+        except BotBaseException as be:
+            obj.logging.error(str(be))
             raise be
         except HTTPRequestTimeout as exc:
             obj.logging.error(f"{func.__name__} timeout")
