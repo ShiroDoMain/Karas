@@ -1574,9 +1574,6 @@ class Yurine(object):
             self.logging.info("Session closed")
         return 0
 
-    def __del__(self):
-        self.close()
-
     def __enter__(self):
         self.logging.debug("enter")
         if not self._is_running:
