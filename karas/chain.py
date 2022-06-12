@@ -9,9 +9,9 @@ class MessageChain(BaseModel):
         self._data = chain
         for _element in chain:
             _element_type = _element.get("type")
-            _attr_obj = MessageElementEnum[_element_type].value(**_element) \
-                if _element_type != "Quote" else Quote(**_element) \
-                if _element_type != "ForwardMessage" else ForwardMessage(**_element)
+            _attr_obj = Quote(**_element) if _element_type == "Quote" \
+                else Forward(**_element) if _element_type == "Forward" \
+                else MessageElementEnum[_element_type].value(**_element)
             if hasattr(self, _element_type):
                 getattr(self, _element_type).append(_attr_obj)
             else:
@@ -118,7 +118,7 @@ class Quote(ElementBase):
         self.type = "Quote"
 
 
-class nodeList(ElementBase):
+class node(ElementBase):
     senderId: int
     time: int
     senderName: str
@@ -127,12 +127,12 @@ class nodeList(ElementBase):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.type: str = "nodeList"
+        self.type: str = "node"
 
 
-class ForwardMessage(ElementBase):
-    nodeList: nodeList
+class Forward(ElementBase):
+    nodeList: List[node]
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.type = "ForwardMessage"
+    def __init__(self, **kws):
+        self.nodeList = list(node(**content) for content in kws.get("nodeList"))
+        self.type = "Forward"
