@@ -375,9 +375,9 @@ class MemberMuteEvent(GroupEventBase):
         return super().__str__() + f": {self.member}"
 
 
-class MemberUnMuteEvent(GroupEventBase):
+class MemberUnmuteEvent(GroupEventBase):
     """群成员被取消禁言事件（该成员不是Bot）"""
-    type: str = "MemberUnMuteEvent"
+    type: str = "MemberUnmuteEvent"
     member: Member
     operator: Operator
 
@@ -540,7 +540,7 @@ class EventEnum(Enum):
     MemberSpecialTitleChangeEvent: "MemberSpecialTitleChangeEvent" = MemberSpecialTitleChangeEvent
     MemberPermissionChangeEvent: "MemberPermissionChangeEvent" = MemberPermissionChangeEvent
     MemberMuteEvent: "MemberMuteEvent" = MemberMuteEvent
-    MemberUnMuteEvent: "MemberUnMuteEvent" = MemberUnMuteEvent
+    MemberUnmuteEvent: "MemberUnmuteEvent" = MemberUnmuteEvent
     MemberHonorChangeEvent: "MemberHonorChangeEvent" = MemberHonorChangeEvent
     NewFriendRequestEvent: "NewFriendRequestEvent" = NewFriendRequestEvent
     MemberJoinRequestEvent: "MemberJoinRequestEvent" = MemberJoinRequestEvent
