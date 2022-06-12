@@ -22,11 +22,9 @@ class BaseModel(metaclass=MetaBase):
             try:
                 if _type and _v is not None and not isinstance(_v, _type):
                     _v = PermissionEnum[_v].value \
-                        if _k in ("origin", "current") and isinstance(_v,str) else _type(*_v) \
+                        if _k in ("origin", "current") and isinstance(_v, str) else _type(*_v) \
                         if _k in ("origin", "current", "messageChain") else _type(**_v)
             except Exception as e:
-                # print(_k, ":", _v, "=>", _type)
-                # print(self.__annotations__)
                 raise e
             setattr(self, _k, _v)
 

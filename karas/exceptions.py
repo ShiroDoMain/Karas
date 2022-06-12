@@ -9,7 +9,7 @@
 from typing import Tuple
 
 
-__all__ : Tuple[str]= (
+__all__: Tuple[str] = (
     "BotBaseException",
     "BotMutedException",
     "BotNotFoundException",

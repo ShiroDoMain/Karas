@@ -96,7 +96,8 @@ class MessageChain(BaseModel):
 
     def _get_elements(self) -> List[ElementBase]:
         _elements = []
-        _chain = (_V for _K,_V in self.__dict__.items() if not _K.startswith("_"))
+        _chain = (_V for _K, _V in self.__dict__.items()
+                  if not _K.startswith("_"))
         for _e in _chain:
             _elements += _e
         return _elements

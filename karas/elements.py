@@ -102,6 +102,7 @@ class FlashImage(ElementBase):
         self.imageId = kwds.get("imageId")
         self.url = kwds.get("url")
 
+
 class Voice(ElementBase):
     voiceId: str
     url: str
@@ -260,14 +261,13 @@ class File(ElementBase):
     isDirectory: bool
     downloadInfo: FileDownloadInfo
 
-
-    def __init__(self, file:Union[str,bytes, BinaryIO, None] = None, path: str = "", parent = None, **kwargs):
+    def __init__(self, file: Union[str, bytes, BinaryIO, None] = None, path: str = "", parent=None, **kwargs):
         self.type: str = "File"
         self.file = file
         self.path = path
         self.parent = parent and File(**parent)
         super().__init__(**kwargs)
-    
+
     def __str__(self) -> str:
         return f" File[{self.id}]"
 
@@ -310,15 +310,15 @@ class GroupConfig(ElementBase):
     name            	群名
 
     announcement	    群公告
-    
+
     confessTalk         是否开启坦白说
-    
+
     allowMemberInvite	是否允许群员邀请
-    
+
     autoApprove	        是否开启自动审批入群
-    
+
     anonymousChat	    是否允许匿名聊天
-    
+
     """
     name: str
     announcement: str
