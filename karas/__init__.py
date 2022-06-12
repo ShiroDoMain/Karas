@@ -59,9 +59,10 @@ class Karas(object):
 
     @classmethod
     async def _executor(cls, message: Union["MessageBase", "EventBase"] = None) -> Optional[str]:
-        if cls.listeners.get(message.type) is None:
+        events = cls.listeners.get(message.type)
+        if events is None:
             return
-        for listener in cls.listeners.get(message.type):
+        for listener in events:
             ca, cb, cb_args = listener
             if cb:
                 cb_args = cb_args or ()
