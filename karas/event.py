@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional, Union
+from typing import Union
 from karas.chain import MessageChain
 
 from karas.util import BaseModel
@@ -166,7 +166,7 @@ class BotJoinGroupEvent(GroupEventBase):
     """Bot加入了一个新群"""
     type: str = "BotJoinGroupEvent"
     group: Group
-    invitor: Optional[Member]
+    invitor: Member
 
     def __str__(self) -> str:
         return super().__str__() + f":{self.group}"
@@ -184,7 +184,7 @@ class BotLeaveEventActive(GroupEventBase):
 class BotLeaveEventKick(GroupEventBase):
     """Bot被踢出一个群"""
     type: str = "BotLeaveEventKick"
-    operator: Optional[Member]
+    operator: Member
 
     def __str__(self) -> str:
         return super().__str__() + f":{self.group}"
@@ -462,8 +462,8 @@ class CommandExecutedEvent(EventBase):
     """命令被执行"""
     type: str = "CommandExecutedEvent"
     name: str
-    friend: Optional[Friend]
-    member: Optional[Member]
+    friend: Friend
+    member: Member
     args: dict
 
 

@@ -174,6 +174,8 @@ class Yurine(object):
             await self._connect()
             self.logging.info("Account verify success")
             self.logging.debug(f"got verifyKey {self.sessionKey}")
+        self.logging.info("connect success")
+        self.logging.info("++++++++++++++++++++++++++++++++++++++++")
         return 0
 
     @error_throw
@@ -234,12 +236,12 @@ class Yurine(object):
         return 0
 
     @error_throw
-    async def _receiver(self) -> None:
+    async def _receiver(self, data: Dict = None) -> None:
         """事件监听器"""
         self._receiver_is_running = True
         while True:
             try:
-                _receive_data: Dict = await self.ws.receive_json()
+                _receive_data: Dict = data or await self.ws.receive_json()
             except (BotBaseException, TypeError):
                 pass
             except Exception:
@@ -256,6 +258,9 @@ class Yurine(object):
                 self._receivData[syncId] = _receive_data
             else:
                 self.logging.debug(f"Unknown event:{_receive_data}")
+            if data:
+                self.logging.debug(f"got other data {data}")
+                break
 
     def listen(self, registerEvent: Union[str, "EventBase", "MessageBase"], callback: Callable = None, cb_args: Optional[Tuple] = None):
         """事件装饰器
@@ -532,7 +537,7 @@ class Yurine(object):
                 content=content
             )
         )
-        self.logging.info(f"Bot <= {MessageChain(*_chain).to_str()}")
+        self.logging.info(f"{friend.nickname}({friend.id}) <= {MessageChain(*_chain).__str__()}")
         echo = await self._raise_status(syncId=syncId)
         return echo.get("messageId")
 
@@ -573,7 +578,7 @@ class Yurine(object):
                 content=content
             )
         )
-        self.logging.info(f"bot <= {MessageChain(*_chain).to_str()}")
+        self.logging.info(f"{member.memberName}({member.id}) <= {MessageChain(*_chain).to_str()}")
         echo = await self._raise_status(syncId=syncId)
         return echo.get("messageId")
 
@@ -1490,8 +1495,13 @@ class Yurine(object):
 
     async def _raise_status(self, data: Optional[Dict] = None, syncId: str = None) -> Dict:
         try:
-            await asyncio.sleep(.1)
-            _json_data = data or (syncId and self._receivData.get(syncId)) or await self.ws.receive_json()
+            while 1:
+                await asyncio.sleep(.1)
+                _json_data = data or (syncId and self._receivData.pop(syncId,None)) or await self.ws.receive_json()
+                if _json_data.get("syncId") and _json_data.get("syncId") == "-1":
+                    await self._receiver(_json_data)
+                    continue
+                break
         except RuntimeError:
             return await self._raise_status(data=data, syncId=syncId)
         self.logging.debug(f"recv data {_json_data}")
