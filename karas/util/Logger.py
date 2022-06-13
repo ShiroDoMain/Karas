@@ -114,7 +114,7 @@ class Logging:
         current_time = time.localtime()
         color = _color if _color else ""
         color_end = '\033[0m' if color else ""
-        _log = f"{time.strftime('%Y-%M-%d %H:%m:%S', current_time)}-[{level}]-{name}/{qq or self.botId}: {msg}"
+        _log = f"{time.strftime('%Y-%m-%d %H:%m:%S', current_time)}-[{level}]-{name}/{qq or self.botId}: {msg}"
         _format = f"{color}{_log}{color_end}"
         if self.callbacks:
             for cb, args, kws in self.callbacks.values():

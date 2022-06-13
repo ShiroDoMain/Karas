@@ -2,7 +2,7 @@ from time import time
 from karas.util import BaseModel
 from karas.elements import ElementBase
 from karas.elements import MessageElementEnum
-from typing import List, Any, Dict, Optional, Union
+from typing import List, Dict, Optional, Union
 
 
 class MessageChain(BaseModel):
@@ -145,7 +145,7 @@ class Forward(ElementBase):
     #     return self._data
 
     @classmethod
-    def _build(cls,_senders, _messages) -> List:
+    def _build(cls, _senders, _messages) -> List:
         _build_lst = []
         _len = len(_messages)
         for s, m in zip(_senders, _messages):
@@ -154,8 +154,8 @@ class Forward(ElementBase):
                 {
                     "senderId": _senderId,
                     "time": int(time()-_len),
-                    "senderName":_senderName,
-                    "messageChain": [e.elements for e in m] if isinstance(m,List) else m.parse_to_json()
+                    "senderName": _senderName,
+                    "messageChain": [e.elements for e in m] if isinstance(m, List) else m.parse_to_json()
                 }
             )
             _len -= 1
@@ -166,11 +166,11 @@ class Forward(ElementBase):
         """Args:
 
             sender:发送者列表，长度应当与消息列表一致或者为1,格式为[{id,name}] 
-            
+
                 例: [{123,"senderName1"},{234:"senderName2"}]
 
             messages:消息列表,格式为[[消息元素]]
-            
+
                 例:[[Plain("哼哼")],[Plain("啊啊啊啊啊"),Image("xxx")]]
         """
         if len(senders) != len(messages) and len(senders) != 1:
@@ -178,4 +178,4 @@ class Forward(ElementBase):
         if len(senders) == 1:
             sender = senders.pop()
             senders = [sender.copy() for _ in range(len(messages))]
-        return cls(**{"nodeList":cls._build(senders,messages)})
+        return cls(**{"nodeList": cls._build(senders, messages)})

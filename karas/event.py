@@ -1,9 +1,7 @@
 from enum import Enum
 from typing import Union
 from karas.chain import MessageChain
-
 from karas.util import BaseModel
-
 from karas.Sender import Client, Friend, Group, Member, Operator, Stranger, Subject
 from karas.messages import MessageBase, MessageEnum
 from karas.permission import Permission

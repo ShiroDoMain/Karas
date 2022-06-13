@@ -6,7 +6,7 @@
 ##  Version  
 ![Mirai-API-API-Version](https://img.shields.io/badge/mirai--http--api-2.5.0-brightgreen.svg?style=plastic)
 ![python-Version](https://img.shields.io/badge/python->=3.7-brightgreen.svg?style=plastic)
-![karas-Version](https://img.shields.io/badge/karas-0.1.6-brightgreen.svg?style=plastic)    
+![karas-Version](https://img.shields.io/badge/karas-0.2.0-brightgreen.svg?style=plastic)    
 ## 使用  
 - 使用pip安装本项目  
 ```shell script
@@ -40,8 +40,16 @@ yurine = Yurine(
     verifyKey="1919810"
 ).start()
 
-yurine.sendFriend(1808107177, [Plain("Hello World)])
+yurine.sendFriend(1808107177, [Plain("Hello World")])
+
+yurine.close()
 ```
+
+## 实例
+[ATRI](https://github.com/ShiroDoMain/ATRI-qqbot)使用了该框架开发，Bot的qq为1977987864  
+
+## 开源
+该框架遵循mirai社区要求使用AGPL-3.0协议开源，如果您使用了该项目开发，请遵循AGPL-3.0开源规范  
 
 ## Notice  
 该框架目前处于开发中状态，如果您在使用过程中发现了bug或者您有好的建议，请尽情提出您的[issues](https://github.com/ShiroDoMain/Karas/issues/new)

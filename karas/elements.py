@@ -1,8 +1,6 @@
 from enum import Enum
 from typing import Any, BinaryIO, Dict, Optional, Union
-
 from karas.permission import Permission
-
 from karas.util import BaseModel
 
 
@@ -14,7 +12,7 @@ class ElementBase(BaseModel):
         return {_K: _V for _K, _V in self.__dict__.items() if _V is not None and not _K.startswith("_")}
 
     def __str__(self) -> str:
-        return f"{self.type}:{[str(_v) for _v in self.__dict__.values()]}"
+        return f" [{self.type}] "
 
 
 class At(ElementBase):
@@ -76,7 +74,7 @@ class Image(ElementBase):
         self.file = file
 
     def __str__(self) -> str:
-        return f"[图片:{self.imageId if getattr(self,'imageId',None) else self.file}]"
+        return f"[图片:{self.imageId}]"
 
     def __call__(self, *args: Any, **kwds: Any) -> None:
         self.imageId = kwds.get("imageId")
