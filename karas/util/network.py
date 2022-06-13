@@ -1,7 +1,7 @@
 import asyncio
 import inspect
 import traceback
-from typing import Awaitable, Optional, Union
+from typing import Optional, Union
 import aiohttp
 from aiohttp.web_exceptions import HTTPRequestTimeout
 from functools import wraps

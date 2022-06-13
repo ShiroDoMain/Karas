@@ -1,10 +1,7 @@
-from email import message
 from enum import Enum
 from typing import Union
-
 from karas.util import BaseModel
-
-from karas.Sender import Client, Group, Member, Sender, Friend, Subject
+from karas.Sender import Client, Member, Sender, Friend, Subject
 from karas.chain import MessageChain
 from karas.elements import ElementBase
 

@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import Optional, Union
 from karas.util import BaseModel
 from karas.chain import MessageChain
 from karas.permission import Permission, PermissionEnum
