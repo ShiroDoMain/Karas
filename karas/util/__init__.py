@@ -14,8 +14,8 @@ class MetaBase(type):
 class BaseModel(metaclass=MetaBase):
     type: str
 
-    def __init__(self, **kws) -> None:
-        self._data = kws
+    def __init__(self, *args, **kws) -> None:
+        self._data = kws or args
         for _k, _v in kws.items():
             _k = _k if _k != "from" else "From"
             _type = self.__annotations__.get(_k)
