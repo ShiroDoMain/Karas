@@ -503,14 +503,13 @@ class Yurine(object):
             if not isinstance(Elements, MessageChain) else Elements.parse_to_json()
         content = await _build_content_json("group", group, quote, _chain)
         syncId = self.namespace.gen()
-        print(_chain)
         await self.ws.send_json(
             wrap_data_json(
                 syncId=syncId,
                 command="sendGroupMessage",
                 content=content
             ))
-        self.logging.info(f"Group({group.id if isinstance(group,Group) else group}) <= {MessageChain(*_chain).to_str()}")
+        self.logging.info(f"Group({group.name if isinstance(group,Group) else group}) <= {MessageChain(*_chain).to_str()}")
         echo = await self._raise_status(syncId=syncId)
         return echo.get("messageId")
 
@@ -544,7 +543,7 @@ class Yurine(object):
                 content=content
             )
         )
-        self.logging.info(f"{friend.nickname}({friend.id}) <= {MessageChain(*_chain).__str__()}")
+        self.logging.info(f"Friend:{friend.nickname if isinstance(friend, Friend) else friend} <= {MessageChain(*_chain).__str__()}")
         echo = await self._raise_status(syncId=syncId)
         return echo.get("messageId")
 
@@ -585,7 +584,7 @@ class Yurine(object):
                 content=content
             )
         )
-        self.logging.info(f"{member.memberName}({member.id}) <= {MessageChain(*_chain).to_str()}")
+        self.logging.info(f"Temp{member.memberName if isinstance(member, Member) else member} <= {MessageChain(*_chain).to_str()}")
         echo = await self._raise_status(syncId=syncId)
         return echo.get("messageId")
 
@@ -596,15 +595,19 @@ class Yurine(object):
         Args:
             message (Union[Source, int]): 要撤回的消息，可以是一个Source或者消息Id
         """
+        syncId = self.namespace.gen()
         await self.ws.send_json(
             wrap_data_json(
                 command="recall",
-                syncId="recall",
+                syncId=syncId,
                 content={
                     "messageId": message.id if isinstance(message, Source) else message
                 }
             )
         )
+        self.logging.info(f"BotRecall: {message.id if isinstance(message,Source) else message}")
+        echo = await self._raise_status(syncId=syncId)
+        return echo.get("msg")
 
     @error_throw
     async def sendNudge(
@@ -643,8 +646,8 @@ class Yurine(object):
                     "kind": kind
                 }))
         self.logging.info(f"Bot <= NudgeEvent:{subject}")
-        data = await self._raise_status(syncId=syncId)
-        return data
+        echo = await self._raise_status(syncId=syncId)
+        return echo.get("msg")
 
     @error_throw
     async def fetchMessageFromId(
