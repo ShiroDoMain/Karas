@@ -1,3 +1,4 @@
+from time import time
 from karas.util import BaseModel
 from karas.elements import ElementBase
 from karas.elements import MessageElementEnum
@@ -127,12 +128,54 @@ class node(ElementBase):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.type: str = "node"
 
 
 class Forward(ElementBase):
     nodeList: List[node]
 
     def __init__(self, **kws):
-        self.nodeList = list(node(**content) for content in kws.get("nodeList"))
+        self._data = kws
+        self.nodeList = list(node(**content)
+                             for content in kws.get("nodeList"))
         self.type = "Forward"
+
+    # @property
+    # def elements(self) -> Dict[Any, Any]:
+    #     self._data["type"] = "Forward"
+    #     return self._data
+
+    @classmethod
+    def _build(cls,_senders, _messages) -> List:
+        _build_lst = []
+        _len = len(_messages)
+        for s, m in zip(_senders, _messages):
+            _senderId, _senderName = s.popitem()
+            _build_lst.append(
+                {
+                    "senderId": _senderId,
+                    "time": int(time()-_len),
+                    "senderName":_senderName,
+                    "messageChain": [e.elements for e in m] if isinstance(m,List) else m.parse_to_json()
+                }
+            )
+            _len -= 1
+        return _build_lst
+
+    @classmethod
+    def build(cls, senders: List[Dict[int, str]], messages: List[Union[MessageChain, List[ElementBase]]]) -> "Forward":
+        """Args:
+
+            sender:发送者列表，长度应当与消息列表一致或者为1,格式为[{id,name}] 
+            
+                例: [{123,"senderName1"},{234:"senderName2"}]
+
+            messages:消息列表,格式为[[消息元素]]
+            
+                例:[[Plain("哼哼")],[Plain("啊啊啊啊啊"),Image("xxx")]]
+        """
+        if len(senders) != len(messages) and len(senders) != 1:
+            raise ValueError
+        if len(senders) == 1:
+            sender = senders.pop()
+            senders = [sender.copy() for _ in range(len(messages))]
+        return cls(**{"nodeList":cls._build(senders,messages)})

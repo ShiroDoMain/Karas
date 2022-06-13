@@ -11,7 +11,7 @@ class ElementBase(BaseModel):
 
     @property
     def elements(self) -> Dict[Any, Any]:
-        return {_K: _V for _K, _V in self.__dict__.items() if _V is not None}
+        return {_K: _V for _K, _V in self.__dict__.items() if _V is not None and not _K.startswith("_")}
 
     def __str__(self) -> str:
         return f"{self.type}:{[str(_v) for _v in self.__dict__.values()]}"
@@ -76,7 +76,7 @@ class Image(ElementBase):
         self.file = file
 
     def __str__(self) -> str:
-        return f"[图片:{self.imageId}]"
+        return f"[图片:{self.imageId if getattr(self,'imageId',None) else self.file}]"
 
     def __call__(self, *args: Any, **kwds: Any) -> None:
         self.imageId = kwds.get("imageId")

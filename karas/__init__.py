@@ -5,7 +5,7 @@ from typing import Awaitable, BinaryIO, Callable, Dict, List, Optional, Tuple, U
 import aiohttp
 from karas.util import DefaultNamespace, status_code_exception
 from karas.util.sync import async_to_sync_wrap
-from karas.chain import MessageChain
+from karas.chain import Forward, MessageChain, node
 from karas.Sender import Friend, Group, Member, Stranger, ReceptorBase, Announcement
 from karas.messages import MessageBase
 from karas.event import Auto_Switch_Event, EventBase, MemberJoinRequestEvent, NewFriendRequestEvent, RequestEvent, Event, NudgeEvent
@@ -458,9 +458,15 @@ class Yurine(object):
     async def _element_check(self, element: "ElementBase", type: str, target: Union[int, Group, None] = None):
         if isinstance(element, (Image, Voice, FlashImage)):
             await self.uploadMultipart(element, type=type)
+        if isinstance(element, Forward):
+            nodeList = element.nodeList
+            if nodeList:
+                element.nodeList = [await self._element_check(node,type=type) for node in nodeList]
+        if isinstance(element, node):
+            element.messageChain = [await self._element_check(e,type=type) for e in element.messageChain._get_elements()]
         if isinstance(element, File):
             raise FunctionException("文件上传请使用uploadFile方法，该方法仅支持发送消息")
-        return element.elements
+        return element.elements if isinstance(element,ElementBase) else element
 
     @error_throw
     async def about(self):
@@ -497,13 +503,14 @@ class Yurine(object):
             if not isinstance(Elements, MessageChain) else Elements.parse_to_json()
         content = await _build_content_json("group", group, quote, _chain)
         syncId = self.namespace.gen()
+        print(_chain)
         await self.ws.send_json(
             wrap_data_json(
                 syncId=syncId,
                 command="sendGroupMessage",
                 content=content
             ))
-        self.logging.info(f"bot <= {MessageChain(*_chain).to_str()}")
+        self.logging.info(f"Group({group.id if isinstance(group,Group) else group}) <= {MessageChain(*_chain).to_str()}")
         echo = await self._raise_status(syncId=syncId)
         return echo.get("messageId")
 
@@ -1583,6 +1590,9 @@ class Yurine(object):
             await self.session.close()
             self.logging.info("Session closed")
         return 0
+
+    def __del__(self):
+        self.close()
 
     def __enter__(self):
         self.logging.debug("enter")
