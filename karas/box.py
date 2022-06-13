@@ -39,7 +39,7 @@ from karas.Sender import (
     Client,
     Announcement,
 )
-from karas.chain import MessageChain, Quote, ForwardMessage
+from karas.chain import MessageChain, Quote, Forward, node
 from karas.permission import AdministartorPermission, MemberPermission, OwnerPermission
 from karas.event import (
     RequestEvent,
