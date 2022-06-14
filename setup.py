@@ -18,7 +18,7 @@ setup(
     author_email="b1808107177@gmail.com",
     url='https://github.com/ShiroDoMain/Karas',
     license='GNU Affero General Public License v3.0',
-    description="一个基于mirai-api-http的高性能qq机器人框架",
+    description="一个基于mirai-api-http的高性能qq消息处理框架",
     packages=["karas", "karas.util"],
     install_requires=[
         "aiohttp>=3.8.1"

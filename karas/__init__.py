@@ -129,6 +129,7 @@ class Yurine(object):
         self._is_running = False
         self._receiver_is_running = False
         self._receivData = {}
+        self._tasks = {}
 
     @property
     def host(self):
@@ -298,7 +299,7 @@ class Yurine(object):
     async def accept(
         self,
         requestEvent: "RequestEvent",
-        message: str = None
+        message: str = ""
     ) -> None:
         """接受该请求事件
 
@@ -322,7 +323,7 @@ class Yurine(object):
     async def reject(
         self,
         requestEvent: "RequestEvent",
-        message: str = None
+        message: str = ""
     ) -> None:
         """拒绝该请求事件
 
@@ -346,7 +347,7 @@ class Yurine(object):
     async def reject_block(
         self,
         requestEvent: Union[NewFriendRequestEvent, MemberJoinRequestEvent],
-        message: str = None
+        message: str = ""
     ) -> None:
         """拒绝添加好友或者入群并添加黑名单，不再接收该用户的好友申请
 
@@ -370,7 +371,7 @@ class Yurine(object):
     async def ignore(
         self,
         requestEvent: MemberJoinRequestEvent,
-        message: str = None
+        message: str = ""
     ) -> None:
         """忽略该请求事件
 
@@ -394,7 +395,7 @@ class Yurine(object):
     async def ignore_block(
         self,
         requestEvent: MemberJoinRequestEvent,
-        message: str = None
+        message: str = ""
     ) -> None:
         """忽略入群并添加黑名单，不再接收该用户的入群申请
 
@@ -443,6 +444,8 @@ class Yurine(object):
     async def uploadMultipart(self, obj: Union["Voice", "Image", "FlashImage"], type: str) -> None:
         """上传多媒体类型文件(语音, 图片),该方法仅作为上传方法，发送请使用sendXxxx(xxx,[Voice(file=xxx)])形式"""
         uploadType = "Image" if isinstance(obj, FlashImage) else obj.type
+        if obj.file is None and obj.url:
+            return
         async with self.session.post(
                 self.route(f"upload{uploadType}"),
                 data={
@@ -1494,8 +1497,36 @@ class Yurine(object):
         )
         return await self._raise_status(syncId=syncId)
 
+    def add_task(self, task: asyncio.Task, name: str = None, callback: Callable = None,*task_args) -> str:
+        """向Yurine运行的loop中添加一个task"""
+        if not inspect.iscoroutine(task):
+            raise ValueError(f"{task} is not coroutine")
+        if name is None:
+            name = self.namespace.gen()
+        _task = self.loop.create_task(task,name=name)
+        self._tasks[name] = _task
+        self.logging.info(f"add task <task-{name}>")
+        if callback:
+            self.logging.info(f"add task <task-{name}> callback {callback.__name__}")
+            _task.add_done_callback(callback)
+
+    def get_task(self,name:str) -> Optional[asyncio.Task]:
+        if name not in self._tasks:
+            return None
+        return self._tasks[name]
+
+    def pop_task(self,name:str) -> Optional[asyncio.Task]:
+        if name not in self._tasks:
+            return None
+        return self._tasks.pop(name)
+
+    def cancel_task(self, name: str) -> None:
+        _task = self.pop_task(name)
+        if _task:
+            self._raise_task_cancel(_task)
+
     async def _raise_task_cancel(self, _task: asyncio.Task) -> None:
-        """取消当前事件循环中的任务"""
+        """取消已经添加的的任务"""
         if not _task.cancelled():
             _task.cancel()
             try:

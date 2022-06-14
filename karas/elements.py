@@ -74,7 +74,7 @@ class Image(ElementBase):
         self.file = file
 
     def __str__(self) -> str:
-        return f"[图片:{self.imageId}]"
+        return f"[图片]:{self.imageId if hasattr(self,'imageId') else ''}"
 
     def __call__(self, *args: Any, **kwds: Any) -> None:
         self.imageId = kwds.get("imageId")
