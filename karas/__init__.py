@@ -444,7 +444,7 @@ class Yurine(object):
     async def uploadMultipart(self, obj: Union["Voice", "Image", "FlashImage"], type: str) -> None:
         """上传多媒体类型文件(语音, 图片),该方法仅作为上传方法，发送请使用sendXxxx(xxx,[Voice(file=xxx)])形式"""
         uploadType = "Image" if isinstance(obj, FlashImage) else obj.type
-        if obj.file is None and obj.url:
+        if hasattr(obj,"url"):
             return
         async with self.session.post(
                 self.route(f"upload{uploadType}"),
@@ -1497,7 +1497,7 @@ class Yurine(object):
         )
         return await self._raise_status(syncId=syncId)
 
-    def add_task(self, task: asyncio.Task, name: str = None, callback: Callable = None,*task_args) -> str:
+    async def add_task(self, task: asyncio.Task, name: str = None, callback: Callable = None,*task_args) -> str:
         """向Yurine运行的loop中添加一个task"""
         if not inspect.iscoroutine(task):
             raise ValueError(f"{task} is not coroutine")
@@ -1509,21 +1509,22 @@ class Yurine(object):
         if callback:
             self.logging.info(f"add task <task-{name}> callback {callback.__name__}")
             _task.add_done_callback(callback)
+        return name
 
-    def get_task(self,name:str) -> Optional[asyncio.Task]:
+    async def get_task(self,name:str) -> Optional[asyncio.Task]:
         if name not in self._tasks:
             return None
         return self._tasks[name]
 
-    def pop_task(self,name:str) -> Optional[asyncio.Task]:
+    async def pop_task(self,name:str) -> Optional[asyncio.Task]:
         if name not in self._tasks:
             return None
         return self._tasks.pop(name)
 
-    def cancel_task(self, name: str) -> None:
-        _task = self.pop_task(name)
+    async def cancel_task(self, name: str) -> None:
+        _task = await self.pop_task(name)
         if _task:
-            self._raise_task_cancel(_task)
+            await self._raise_task_cancel(_task)
 
     async def _raise_task_cancel(self, _task: asyncio.Task) -> None:
         """取消已经添加的的任务"""
@@ -1532,7 +1533,7 @@ class Yurine(object):
             try:
                 await _task
             except asyncio.CancelledError:
-                self.logging.debug(f"canceled <task {id(_task)}>")
+                self.logging.info(f"canceled <task {_task.get_name()}>")
 
     async def _raise_status(self, data: Optional[Dict] = None, syncId: str = None) -> Dict:
         try:

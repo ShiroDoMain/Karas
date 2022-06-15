@@ -8,8 +8,8 @@ class Permission:
         pass
 
     def __eq__(self, __o: object) -> bool:
-        if not isinstance(__o, self):
-            return False
+        if isinstance(__o, self.__class__):
+            return __o.type.upper() == self.type.upper()
         return self.type == __o if isinstance(__o, str) else self.type == __o.type
 
     def __str__(self) -> str:
