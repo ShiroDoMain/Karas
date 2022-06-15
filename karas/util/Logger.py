@@ -71,7 +71,8 @@ class Logging:
         loggerLevel: Union[str, int],
         botId: int,
         filename: str = None,
-        logFile: bool = False
+        logFile: bool = False,
+        recordLevel: str = None
     ) -> None:
         self.logging = logging.getLogger()
         self.logging.setLevel(level=loggerLevel.upper())
@@ -81,8 +82,10 @@ class Logging:
         self._logFile = logFile
         self.filename = filename
         self._callbasks = {}
-        if (self.filename is None or logFile) and not os.path.exists("logs"):
-            os.mkdir("logs")
+        self._recordLevel = (recordLevel and recordLevel.upper()) or loggerLevel
+        if logFile:
+            if self.filename is None and not os.path.exists("logs"):
+                os.mkdir("logs")
         self.logging.addHandler(hdlr=self.handle)
 
     @property
@@ -119,7 +122,8 @@ class Logging:
         if self.callbacks:
             for cb, args, kws in self.callbacks.values():
                 cb(_log, level, *args, **kws)
-        self._wirte(_log, current_time)
+        if level == self._recordLevel:
+            self._wirte(_log, current_time)
         return _format
 
     @os_check("BLUE")
