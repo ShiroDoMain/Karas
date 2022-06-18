@@ -83,7 +83,7 @@ class RequestEvent(EventBase):
     @property
     def reject(self):
         self.operate = 1
-        return __dict__
+        return self.__dict__
 
 
 class BotOnlineEvent(BotEventBase):
