@@ -3,7 +3,7 @@
 from setuptools import setup
 import karas
 
-with open("README.md", "r") as f:
+with open("README.md", "r", encoding = "UTF-8") as f:
     readme = f.read()
 
 setup(
