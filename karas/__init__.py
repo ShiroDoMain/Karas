@@ -16,7 +16,7 @@ from karas.util.Logger import Logging
 from karas.util.network import error_throw, URL_Route, wrap_data_json
 
 
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 
 
 async def _build_content_json(
@@ -263,35 +263,44 @@ class Yurine(object):
                 self.logging.debug(f"got other data {data}")
                 break
 
-    def listen(self, registerEvent: Union[str, "EventBase", "MessageBase"], callback: Callable = None, cb_args: Optional[Tuple] = None):
+    def listen(self, registerEvent: Union[str, "EventBase", "MessageBase", List], callback: Callable = None, cb_args: Optional[Tuple] = None):
         """事件装饰器
         Args:
-            registerEvent (str, Event, Message): 要监听的事件或者消息类型
+            registerEvent (str, Event, Message, list): 要监听的事件或者消息类型
             callback: 设定一个callback,当监听到指定事件会将该事件原始数据(Dict)作为第一个参数传入
             cb_args:传入到callback的其他参数
 
             callback用法:
             def callback(eventData: Dict, arg1, arg2,...) -> ...: ...
-            @listen(GroupMessage, callback=callback, cb_args=(a1,a2,a3)0) -> None:...
+            yurinelisten(GroupMessage, callback=callback, cb_args=(a1,a2,a3)0) -> None:...
+
+            使用函数处理:
+            @yurine.listen("GroupMessage")
+            async def listen_gm(message:MessageChain):...
+
+            @yurine.listen(["GroupMessage", "TempMessage"])
+            async def multi_listen(message:MessageChain) -> None: ...
+
+            PS: 如果要将一个函数监听绑定多个事件类型，需要注意函数能接受的参数必须是这些消息时间类型所具有的共通的参数，例如你不能让一个带有Friend类型参数的函数监听GroupMessage
 
         Returns:
             None: NoReturn
         """
-        if registerEvent:
-            registerEvent = registerEvent if isinstance(
-                registerEvent, str) else registerEvent.type
+        registerEvents = [(e if isinstance(e, str) else e.type) for e in registerEvent] if isinstance(
+                registerEvent, List) else (registerEvent,) if isinstance(registerEvent,str) else (registerEvent.type,)
 
         def register_decorator(callable: Awaitable):
             def register_wrapper(*args, **kwargs):
-                self.logging.debug(
-                    f"register listener [{callable.__name__}] for Event[{registerEvent}]"
-                )
-                if Karas.listeners.get(registerEvent):
-                    Karas.listeners.get(registerEvent).append(
-                        (callable, callback, cb_args))
-                else:
-                    Karas.listeners[registerEvent] = [
-                        (callable, callback, cb_args)]
+                for event in registerEvents:
+                    self.logging.debug(
+                        f"register listener [{callable.__name__}] for Event[{event}]"
+                    )
+                    if Karas.listeners.get(event):
+                        Karas.listeners.get(event).append(
+                            (callable, callback, cb_args))
+                    else:
+                        Karas.listeners[event] = [
+                            (callable, callback, cb_args)]
             return register_wrapper()
         return register_decorator
 
