@@ -81,7 +81,7 @@ class Logging:
         self.handle.setLevel(level=loggerLevel.upper())
         self._logFile = logFile
         self._callbasks = {}
-        self._recordLevel = (recordLevel and recordLevel.upper()) or loggerLevel
+        self._recordLevel = recordLevel.upper() if recordLevel is not None else loggerLevel
         if self._logFile:
             self.filename = filename
             if self.filename is None and not os.path.exists("logs"):

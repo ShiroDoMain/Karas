@@ -105,7 +105,8 @@ class Yurine(object):
             ws: ClientWebSocketResponse = None,
             loggerLevel: str = "INFO",
             logToFile=False,
-            logFileName: str = None
+            logFileName: str = None,
+            logRecordLevel:str = None
     ) -> None:
         self._host = host
         self._port = port
@@ -119,7 +120,7 @@ class Yurine(object):
 
         self.route = URL_Route(self.url)
         self.logging = Logging(
-            loggerLevel, qq, filename=logFileName, logFile=logToFile)
+            loggerLevel, qq, filename=logFileName, logFile=logToFile, recordLevel=logRecordLevel)
         self._loop = loop or self._get_event_loop()
         self.karas = karas or Karas
         self.karas.loop = self.loop
