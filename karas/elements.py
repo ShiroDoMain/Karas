@@ -140,11 +140,11 @@ class Json(ElementBase):
 
 
 class App(ElementBase):
+    content: Dict
     def __init__(self, **kwargs):
         self.type: str = "App"
         super().__init__(**kwargs)
 
-    content: str
 
 
 class Poke(ElementBase):
@@ -291,15 +291,15 @@ class FriendProfile(Profile):
     """好友资料"""
 
 
-class MemberProfile(ElementBase):
+class MemberProfile(Profile):
     """成员资料"""
 
 
-class UserProfile(ElementBase):
+class UserProfile(Profile):
     """用户资料"""
 
 
-class BotProfile(ElementBase):
+class BotProfile(Profile):
     """Bot资料"""
 
 
