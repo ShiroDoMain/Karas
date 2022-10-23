@@ -140,7 +140,7 @@ class Json(ElementBase):
 
 
 class App(ElementBase):
-    content: Dict
+    content: str
     def __init__(self, **kwargs):
         self.type: str = "App"
         super().__init__(**kwargs)
