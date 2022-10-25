@@ -75,10 +75,10 @@ class Logging:
         recordLevel: str = None
     ) -> None:
         self.logging = logging.getLogger()
-        self.logging.setLevel(level=loggerLevel.upper())
+        self.logging.setLevel(level=loggerLevel)
         self.botId = botId
         self.handle = logging.StreamHandler()
-        self.handle.setLevel(level=loggerLevel.upper())
+        self.handle.setLevel(level=loggerLevel)
         self._logFile = logFile
         self._callbasks = {}
         self._recordLevel = recordLevel.upper() if recordLevel is not None else loggerLevel
