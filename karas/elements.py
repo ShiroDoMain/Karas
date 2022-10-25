@@ -1,7 +1,9 @@
 from enum import Enum
+import os
 from typing import Any, BinaryIO, Dict, Optional, Union
 from karas.permission import Permission
 from karas.util import BaseModel
+from aiohttp import ClientSession
 
 
 class ElementBase(BaseModel):
@@ -72,6 +74,16 @@ class Image(ElementBase):
         self.type: str = "Image"
         self.ftype = "img"
         self.file = file
+    
+    async def download(self, path, filename = None):
+        filename = filename or self.imageId.replace("}","").replace("{","")
+        _save_path = os.path.join(path,filename)
+        if os.path.exists(_save_path):
+            return None
+        async with ClientSession() as _session:
+            async with _session.get(self.url) as _resp:
+                with open(_save_path, "wb") as _file:
+                    _file.write(await _resp.read())
 
     def __str__(self) -> str:
         return f"[图片]:{self.imageId if hasattr(self,'imageId') else ''}"
@@ -92,7 +104,17 @@ class FlashImage(ElementBase):
         self.type: str = "FlashImage"
         self.ftype = "img"
         self.file = file
-
+        
+    async def download(self, path, filename = None):
+        filename = filename or self.imageId.replace("}","").replace("{","")
+        _save_path = os.path.join(path,filename)
+        if os.path.exists(_save_path):
+            return None
+        async with ClientSession() as _session:
+            async with _session.get(self.url) as _resp:
+                with open(_save_path, "wb") as _file:
+                    _file.write(await _resp.read())
+                    
     def __str__(self) -> str:
         return f" [闪照:{self.imageId}]"
 
@@ -140,11 +162,11 @@ class Json(ElementBase):
 
 
 class App(ElementBase):
+    content: str
     def __init__(self, **kwargs):
         self.type: str = "App"
         super().__init__(**kwargs)
 
-    content: str
 
 
 class Poke(ElementBase):
@@ -291,15 +313,15 @@ class FriendProfile(Profile):
     """好友资料"""
 
 
-class MemberProfile(ElementBase):
+class MemberProfile(Profile):
     """成员资料"""
 
 
-class UserProfile(ElementBase):
+class UserProfile(Profile):
     """用户资料"""
 
 
-class BotProfile(ElementBase):
+class BotProfile(Profile):
     """Bot资料"""
 
 

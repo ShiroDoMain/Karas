@@ -119,7 +119,7 @@ class Yurine(object):
 
         self.route = URL_Route(self.url)
         self.logging = Logging(
-            loggerLevel, qq, filename=logFileName, logFile=logToFile)
+            loggerLevel.upper(), qq, filename=logFileName, logFile=logToFile)
         self._loop = loop or self._get_event_loop()
         self.karas = karas or Karas
         self.karas.loop = self.loop
