@@ -3,7 +3,7 @@
 from setuptools import setup
 import karas
 
-with open("README.md", "r") as f:
+with open("README.md", "r", encoding = "UTF-8") as f:
     readme = f.read()
 
 setup(
@@ -27,5 +27,6 @@ setup(
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
     ]
 )
