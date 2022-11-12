@@ -80,13 +80,20 @@ class Logging:
         self.handle = logging.StreamHandler()
         self.handle.setLevel(level=loggerLevel)
         self._logFile = logFile
+        self.filename = filename
         self._callbasks = {}
-        self._recordLevel = recordLevel.upper() if recordLevel is not None else loggerLevel
-        if self._logFile:
-            self.filename = filename
+        self._recordLevel = (recordLevel and recordLevel.upper()) or loggerLevel
+        if logFile:
             if self.filename is None and not os.path.exists("logs"):
                 os.mkdir("logs")
         self.logging.addHandler(hdlr=self.handle)
+        self._level = {
+            "INFO":0,
+            "DEBUG":1,
+            "WARNING":2,
+            "ERROR":3
+            }
+        self._logLv = self._level[self._recordLevel]
 
     @property
     def callbacks(self) -> List:
@@ -122,7 +129,7 @@ class Logging:
         if self.callbacks:
             for cb, args, kws in self.callbacks.values():
                 cb(_log, level, *args, **kws)
-        if level == self._recordLevel and self._logFile:
+        if self._level[level] <= self._logLv and self._logFile:
             self._wirte(_log, current_time)
         return _format
 
