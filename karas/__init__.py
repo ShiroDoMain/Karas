@@ -8,13 +8,14 @@ from karas.util.sync import async_to_sync_wrap
 from karas.chain import Forward, MessageChain, node
 from karas.Sender import Friend, Group, Member, Stranger, ReceptorBase, Announcement
 from karas.messages import MessageBase
-from karas.event import Auto_Switch_Event, EventBase, MemberJoinRequestEvent, NewFriendRequestEvent, RequestEvent, Event, NudgeEvent
-from karas.elements import ElementBase, File, FlashImage, GroupConfig, Image, MemberInfo, Plain, Source, Voice, FriendProfile, MemberProfile, \
+from karas.event import Auto_Switch_Event, EventBase, MemberJoinRequestEvent, NewFriendRequestEvent, RequestEvent, \
+    Event, NudgeEvent, BotOfflineEventActive, BotOnlineEvent
+from karas.elements import ElementBase, File, FlashImage, GroupConfig, Image, MemberInfo, Plain, Source, Voice, \
+    FriendProfile, MemberProfile, \
     BotProfile, UserProfile
 from karas.exceptions import *
 from karas.util.Logger import Logging
 from karas.util.network import error_throw, URL_Route, wrap_data_json
-
 
 __version__ = "0.2.5"
 
@@ -106,7 +107,7 @@ class Yurine(object):
             loggerLevel: str = "INFO",
             logToFile=False,
             logFileName: str = None,
-            logRecordLevel:str = None
+            logRecordLevel: str = None
     ) -> None:
         self._host = host
         self._port = port
@@ -119,7 +120,8 @@ class Yurine(object):
         self._ws = ws
 
         self.route = URL_Route(self.url)
-        self.logging = Logging(loggerLevel, qq, filename=logFileName, logFile=logToFile, recordLevel=logRecordLevel)
+        self.logging = Logging(loggerLevel.upper(), qq, filename=logFileName, logFile=logToFile,
+                               recordLevel=logRecordLevel)
         self._loop = loop or self._get_event_loop()
         self.karas = karas or Karas
         self.karas.loop = self.loop
@@ -243,8 +245,8 @@ class Yurine(object):
         while True:
             try:
                 _receive_data: Dict = data or await self.ws.receive_json()
-            except (BotBaseException, TypeError):
-                pass
+            # except (BotBaseException, TypeError):
+            #     pass
             except Exception:
                 raise
             syncId = _receive_data.get("syncId")
@@ -252,6 +254,15 @@ class Yurine(object):
                 _parser = self.karas.event_parse(
                     _receive_data["data"], self.logging)
                 _event = await _parser.__anext__()
+                if not self._is_running and isinstance(_event, BotOnlineEvent):
+                    self.logging.info("bot online")
+                    self._is_running = True
+                if isinstance(_event, BotOfflineEventActive):
+                    self.logging.warning("Bot offline, waiting reload...")
+                    self._is_running = self.is_running and False
+                    await asyncio.sleep(1)
+                    await _parser.asend(False)
+                    continue
                 await _parser.asend(self.account == _event.event.fromId) \
                     if isinstance(_event, Event) else await _parser.asend(False)
             elif syncId:
@@ -263,7 +274,8 @@ class Yurine(object):
                 self.logging.debug(f"got other data {data}")
                 break
 
-    def listen(self, registerEvent: Union[str, "EventBase", "MessageBase", List], callback: Callable = None, cb_args: Optional[Tuple] = None):
+    def listen(self, registerEvent: Union[str, "EventBase", "MessageBase", List], callback: Callable = None,
+               cb_args: Optional[Tuple] = None):
         """事件装饰器
         Args:
             registerEvent (str, Event, Message, list): 要监听的事件或者消息类型
@@ -287,7 +299,7 @@ class Yurine(object):
             None: NoReturn
         """
         registerEvents = [(e if isinstance(e, str) else e.type) for e in registerEvent] if isinstance(
-                registerEvent, List) else (registerEvent,) if isinstance(registerEvent,str) else (registerEvent.type,)
+            registerEvent, List) else (registerEvent,) if isinstance(registerEvent, str) else (registerEvent.type,)
 
         def register_decorator(callable: Awaitable):
             def register_wrapper(*args, **kwargs):
@@ -301,14 +313,16 @@ class Yurine(object):
                     else:
                         Karas.listeners[event] = [
                             (callable, callback, cb_args)]
+
             return register_wrapper()
+
         return register_decorator
 
     @error_throw
     async def accept(
-        self,
-        requestEvent: "RequestEvent",
-        message: str = ""
+            self,
+            requestEvent: "RequestEvent",
+            message: str = ""
     ) -> None:
         """接受该请求事件
 
@@ -330,9 +344,9 @@ class Yurine(object):
 
     @error_throw
     async def reject(
-        self,
-        requestEvent: "RequestEvent",
-        message: str = ""
+            self,
+            requestEvent: "RequestEvent",
+            message: str = ""
     ) -> None:
         """拒绝该请求事件
 
@@ -354,9 +368,9 @@ class Yurine(object):
 
     @error_throw
     async def reject_block(
-        self,
-        requestEvent: Union[NewFriendRequestEvent, MemberJoinRequestEvent],
-        message: str = ""
+            self,
+            requestEvent: Union[NewFriendRequestEvent, MemberJoinRequestEvent],
+            message: str = ""
     ) -> None:
         """拒绝添加好友或者入群并添加黑名单，不再接收该用户的好友申请
 
@@ -378,9 +392,9 @@ class Yurine(object):
 
     @error_throw
     async def ignore(
-        self,
-        requestEvent: MemberJoinRequestEvent,
-        message: str = ""
+            self,
+            requestEvent: MemberJoinRequestEvent,
+            message: str = ""
     ) -> None:
         """忽略该请求事件
 
@@ -402,9 +416,9 @@ class Yurine(object):
 
     @error_throw
     async def ignore_block(
-        self,
-        requestEvent: MemberJoinRequestEvent,
-        message: str = ""
+            self,
+            requestEvent: MemberJoinRequestEvent,
+            message: str = ""
     ) -> None:
         """忽略入群并添加黑名单，不再接收该用户的入群申请
 
@@ -425,7 +439,8 @@ class Yurine(object):
             )
 
     @error_throw
-    async def uploadFile(self, group: Union[int, Group], file: Union[str, BinaryIO, bytes, None], type: str = "group", path: str = "") -> File:
+    async def uploadFile(self, group: Union[int, Group], file: Union[str, BinaryIO, bytes, None], type: str = "group",
+                         path: str = "") -> File:
         """上传群文件，返回的是上传的该文件对象
 
         args:
@@ -437,14 +452,14 @@ class Yurine(object):
             File: 上传的文件对象
         """
         async with self.session.post(
-            self.route("/file/upload"),
-            data={
-                "sessionKey": self.sessionKey,
-                "type": type,
-                "target": str(group if isinstance(group, int) else group.id),
-                "path": path,
-                "file": open(file, "rb") if isinstance(file, str) else file
-            }
+                self.route("/file/upload"),
+                data={
+                    "sessionKey": self.sessionKey,
+                    "type": type,
+                    "target": str(group if isinstance(group, int) else group.id),
+                    "path": path,
+                    "file": open(file, "rb") if isinstance(file, str) else file
+                }
         ) as _response:
             parsed_data = await self._raise_status(await _response.json())
             return File(**parsed_data)
@@ -453,7 +468,7 @@ class Yurine(object):
     async def uploadMultipart(self, obj: Union["Voice", "Image", "FlashImage"], type: str) -> None:
         """上传多媒体类型文件(语音, 图片),该方法仅作为上传方法，发送请使用sendXxxx(xxx,[Voice(file=xxx)])形式"""
         uploadType = "Image" if isinstance(obj, FlashImage) else obj.type
-        if hasattr(obj,"url"):
+        if hasattr(obj, "url"):
             return
         async with self.session.post(
                 self.route(f"upload{uploadType}"),
@@ -473,12 +488,13 @@ class Yurine(object):
         if isinstance(element, Forward):
             nodeList = element.nodeList
             if nodeList:
-                element.nodeList = [await self._element_check(node,type=type) for node in nodeList]
+                element.nodeList = [await self._element_check(node, type=type) for node in nodeList]
         if isinstance(element, node):
-            element.messageChain = [await self._element_check(e,type=type) for e in element.messageChain._get_elements()]
+            element.messageChain = [await self._element_check(e, type=type) for e in
+                                    element.messageChain._get_elements()]
         if isinstance(element, File):
             raise FunctionException("文件上传请使用uploadFile方法，该方法仅支持发送消息")
-        return element.elements if isinstance(element,ElementBase) else element
+        return element.elements if isinstance(element, ElementBase) else element
 
     @error_throw
     async def about(self):
@@ -521,7 +537,8 @@ class Yurine(object):
                 command="sendGroupMessage",
                 content=content
             ))
-        self.logging.info(f"Group({group.name if isinstance(group,Group) else group}) <= {MessageChain(*_chain).to_str()}")
+        self.logging.info(
+            f"Group({group.name if isinstance(group, Group) else group}) <= {MessageChain(*_chain).to_str()}")
         echo = await self._raise_status(syncId=syncId)
         return echo.get("messageId")
 
@@ -555,7 +572,8 @@ class Yurine(object):
                 content=content
             )
         )
-        self.logging.info(f"Friend:{friend.nickname if isinstance(friend, Friend) else friend} <= {MessageChain(*_chain).__str__()}")
+        self.logging.info(
+            f"Friend:{friend.nickname if isinstance(friend, Friend) else friend} <= {MessageChain(*_chain).__str__()}")
         echo = await self._raise_status(syncId=syncId)
         return echo.get("messageId")
 
@@ -596,7 +614,8 @@ class Yurine(object):
                 content=content
             )
         )
-        self.logging.info(f"Temp{member.memberName if isinstance(member, Member) else member} <= {MessageChain(*_chain).to_str()}")
+        self.logging.info(
+            f"Temp{member.memberName if isinstance(member, Member) else member} <= {MessageChain(*_chain).to_str()}")
         echo = await self._raise_status(syncId=syncId)
         return echo.get("messageId")
 
@@ -617,7 +636,7 @@ class Yurine(object):
                 }
             )
         )
-        self.logging.info(f"BotRecall: {message.id if isinstance(message,Source) else message}")
+        self.logging.info(f"BotRecall: {message.id if isinstance(message, Source) else message}")
         echo = await self._raise_status(syncId=syncId)
         return echo.get("msg")
 
@@ -663,8 +682,8 @@ class Yurine(object):
 
     @error_throw
     async def fetchMessageFromId(
-        self,
-        messageId: int
+            self,
+            messageId: int
     ) -> Optional[MessageChain]:
         """通过messageId获取消息
 
@@ -704,8 +723,8 @@ class Yurine(object):
 
     @error_throw
     async def fetchFriendProfile(
-        self,
-        friend: Union[Friend, int]
+            self,
+            friend: Union[Friend, int]
     ) -> Optional[Friend]:
         """
         获取好友详细资料
@@ -740,8 +759,8 @@ class Yurine(object):
 
     @error_throw
     async def fetchMemberList(
-        self,
-        group: Union[Group, int]
+            self,
+            group: Union[Group, int]
     ) -> Optional[List[Member]]:
         """
         获取群成员列表
@@ -761,9 +780,9 @@ class Yurine(object):
 
     @error_throw
     async def fetchMemberProfile(
-        self,
-        group: Union[Group, int],
-        member: Union[Member, int]
+            self,
+            group: Union[Group, int],
+            member: Union[Member, int]
     ) -> Optional[MemberProfile]:
         """
         获取成员详细资料
@@ -817,13 +836,13 @@ class Yurine(object):
 
     @error_throw
     async def fetchFileList(
-        self,
-        target: Union[int, Group, Friend] = None,
-        id: str = "",
-        path: str = None,
-        withDownloadInfo: bool = False,
-        offset: int = 1,
-        size: int = 10,
+            self,
+            target: Union[int, Group, Friend] = None,
+            id: str = "",
+            path: str = None,
+            withDownloadInfo: bool = False,
+            offset: int = 1,
+            size: int = 10,
     ) -> Optional[List[File]]:
         """获取文件列表
 
@@ -858,11 +877,11 @@ class Yurine(object):
 
     @error_throw
     async def fetchFileInfo(
-        self,
-        target: Union[int, Group, Friend] = None,
-        id: str = "",
-        path: str = None,
-        withDownloadInfo: bool = False
+            self,
+            target: Union[int, Group, Friend] = None,
+            id: str = "",
+            path: str = None,
+            withDownloadInfo: bool = False
     ) -> Optional[File]:
         """获取文件信息
 
@@ -893,11 +912,11 @@ class Yurine(object):
 
     @error_throw
     async def fileMkdir(
-        self,
-        target: Union[int, Friend, Group],
-        directoryName: str,
-        id: str = "",
-        path: Optional[str] = None,
+            self,
+            target: Union[int, Friend, Group],
+            directoryName: str,
+            id: str = "",
+            path: Optional[str] = None,
     ) -> Optional[File]:
         """创建文件夹
 
@@ -927,10 +946,10 @@ class Yurine(object):
 
     @error_throw
     async def fileDelete(
-        self,
-        target: Union[int, Friend, Group],
-        id: str = "",
-        path: Optional[str] = None,
+            self,
+            target: Union[int, Friend, Group],
+            id: str = "",
+            path: Optional[str] = None,
     ) -> str:
         """删除文件
 
@@ -958,12 +977,12 @@ class Yurine(object):
 
     @error_throw
     async def fileMove(
-        self,
-        target: Union[int, Friend, Group],
-        path: str,
-        id: str = "",
-        moveTo: str = None,
-        moveToPath: str = None,
+            self,
+            target: Union[int, Friend, Group],
+            path: str,
+            id: str = "",
+            moveTo: str = None,
+            moveToPath: str = None,
     ) -> str:
         """移动文件
 
@@ -1000,11 +1019,11 @@ class Yurine(object):
 
     @error_throw
     async def fileRename(
-        self,
-        target: Union[int, Friend, Group],
-        renameTo: str,
-        id: str = "",
-        path: str = None,
+            self,
+            target: Union[int, Friend, Group],
+            renameTo: str,
+            id: str = "",
+            path: str = None,
     ) -> str:
         """重命名文件
 
@@ -1031,8 +1050,8 @@ class Yurine(object):
 
     @error_throw
     async def deleteFriend(
-        self,
-        friend: Union[int, Friend],
+            self,
+            friend: Union[int, Friend],
     ) -> str:
         """删除好友
 
@@ -1056,10 +1075,10 @@ class Yurine(object):
 
     @error_throw
     async def mute(
-        self,
-        group: Union[int, Group],
-        member: Union[int, Member],
-        time: Optional[int],
+            self,
+            group: Union[int, Group],
+            member: Union[int, Member],
+            time: Optional[int],
     ) -> str:
         """禁言群成员
 
@@ -1087,9 +1106,9 @@ class Yurine(object):
 
     @error_throw
     async def unmute(
-        self,
-        group: Union[int, Group],
-        member: Union[int, Member],
+            self,
+            group: Union[int, Group],
+            member: Union[int, Member],
     ) -> str:
         """解除群成员禁言
 
@@ -1115,10 +1134,10 @@ class Yurine(object):
 
     @error_throw
     async def kick(
-        self,
-        group: Union[int, Group],
-        member: Union[int, Member],
-        msg: str = "",
+            self,
+            group: Union[int, Group],
+            member: Union[int, Member],
+            msg: str = "",
     ) -> str:
         """移除群成员
 
@@ -1146,8 +1165,8 @@ class Yurine(object):
 
     @error_throw
     async def quit(
-        self,
-        group: Union[int, Group]
+            self,
+            group: Union[int, Group]
     ) -> str:
         """退出群聊
 
@@ -1171,8 +1190,8 @@ class Yurine(object):
 
     @error_throw
     async def muteAll(
-        self,
-        group: Union[int, Group],
+            self,
+            group: Union[int, Group],
     ) -> str:
         """全体禁言
 
@@ -1196,8 +1215,8 @@ class Yurine(object):
 
     @error_throw
     async def unmuteAll(
-        self,
-        group: Union[int, Group]
+            self,
+            group: Union[int, Group]
     ) -> str:
         """解除全体禁言
 
@@ -1222,8 +1241,8 @@ class Yurine(object):
 
     @error_throw
     async def setEssence(
-        self,
-        messageId: Union[int, Source]
+            self,
+            messageId: Union[int, Source]
     ) -> str:
         """设置群精华消息
 
@@ -1247,8 +1266,8 @@ class Yurine(object):
 
     @error_throw
     async def fetchGroupConfig(
-        self,
-        group: Union[int, Group],
+            self,
+            group: Union[int, Group],
     ) -> Optional[GroupConfig]:
         """获取群设置
 
@@ -1274,9 +1293,9 @@ class Yurine(object):
 
     @error_throw
     async def setGroupConfig(
-        self,
-        group: Union[int, Group],
-        config: Union[Dict, GroupConfig] = None
+            self,
+            group: Union[int, Group],
+            config: Union[Dict, GroupConfig] = None
     ) -> str:
         """修改群设置
 
@@ -1305,9 +1324,9 @@ class Yurine(object):
 
     @error_throw
     async def fetchMemberInfo(
-        self,
-        group: Union[int, Group],
-        member: Union[int, Member],
+            self,
+            group: Union[int, Group],
+            member: Union[int, Member],
     ) -> Optional[Member]:
         """获取群员设置
 
@@ -1335,10 +1354,10 @@ class Yurine(object):
 
     @error_throw
     async def setMemberInfo(
-        self,
-        group: Union[int, Group],
-        member: Union[int, Member],
-        info: Union[Dict, MemberInfo]
+            self,
+            group: Union[int, Group],
+            member: Union[int, Member],
+            info: Union[Dict, MemberInfo]
     ) -> str:
         """修改群员设置
 
@@ -1369,10 +1388,10 @@ class Yurine(object):
 
     @error_throw
     async def setMemberAdmin(
-        self,
-        group: Union[int, Group],
-        member: Union[int, Member],
-        assign: bool,
+            self,
+            group: Union[int, Group],
+            member: Union[int, Member],
+            assign: bool,
     ) -> str:
         """修改群员管理员
 
@@ -1400,10 +1419,10 @@ class Yurine(object):
 
     @error_throw
     async def fetchAnnouncement(
-        self,
-        group: Union[int, Group],
-        offset: Optional[int] = None,
-        size: Optional[int] = None,
+            self,
+            group: Union[int, Group],
+            offset: Optional[int] = None,
+            size: Optional[int] = None,
     ) -> List[Announcement]:
         """获取群公告
 
@@ -1432,15 +1451,15 @@ class Yurine(object):
 
     @error_throw
     async def publishAnnouncement(
-        self,
-        group: Union[int, Group],
-        content: str,
-        sendToNewMember: bool = False,
-        pinned: bool = False,
-        showEditCard: bool = False,
-        showPopup: bool = False,
-        requireConfirmation: bool = False,
-        image: Optional[Image] = None
+            self,
+            group: Union[int, Group],
+            content: str,
+            sendToNewMember: bool = False,
+            pinned: bool = False,
+            showEditCard: bool = False,
+            showPopup: bool = False,
+            requireConfirmation: bool = False,
+            image: Optional[Image] = None
     ) -> Optional[Announcement]:
         """此方法向指定群发布群公告
         group          	    群组，可以是int也可以是群组对象
@@ -1480,9 +1499,9 @@ class Yurine(object):
 
     @error_throw
     async def deleteAnnouncement(
-        self,
-        group: Union[int, Group],
-        fid: int
+            self,
+            group: Union[int, Group],
+            fid: int
     ) -> str:
         """删除群公告
 
@@ -1506,13 +1525,13 @@ class Yurine(object):
         )
         return await self._raise_status(syncId=syncId)
 
-    async def add_task(self, task: asyncio.Task, name: str = None, callback: Callable = None,*task_args) -> str:
+    async def add_task(self, task: asyncio.Task, name: str = None, callback: Callable = None, *task_args) -> str:
         """向Yurine运行的loop中添加一个task"""
         if not inspect.iscoroutine(task):
             raise ValueError(f"{task} is not coroutine")
         if name is None:
             name = self.namespace.gen()
-        _task = self.loop.create_task(task,name=name)
+        _task = self.loop.create_task(task, name=name)
         self._tasks[name] = _task
         self.logging.info(f"add task <task-{name}>")
         if callback:
@@ -1520,12 +1539,12 @@ class Yurine(object):
             _task.add_done_callback(callback)
         return name
 
-    async def get_task(self,name:str) -> Optional[asyncio.Task]:
+    async def get_task(self, name: str) -> Optional[asyncio.Task]:
         if name not in self._tasks:
             return None
         return self._tasks[name]
 
-    async def pop_task(self,name:str) -> Optional[asyncio.Task]:
+    async def pop_task(self, name: str) -> Optional[asyncio.Task]:
         if name not in self._tasks:
             return None
         return self._tasks.pop(name)
@@ -1548,7 +1567,7 @@ class Yurine(object):
         try:
             while 1:
                 await asyncio.sleep(.1)
-                _json_data = data or (syncId and self._receivData.pop(syncId,None)) or await self.ws.receive_json()
+                _json_data = data or (syncId and self._receivData.pop(syncId, None)) or await self.ws.receive_json()
                 if _json_data.get("syncId") and _json_data.get("syncId") == "-1":
                     await self._receiver(_json_data)
                     continue
@@ -1635,8 +1654,8 @@ class Yurine(object):
             self.logging.info("Session closed")
         return 0
 
-    def __del__(self):
-        self.close()
+    # def __del__(self):
+    #     self.close()
 
     def __enter__(self):
         self.logging.debug("enter")

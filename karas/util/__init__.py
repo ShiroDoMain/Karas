@@ -33,9 +33,9 @@ class BaseModel(metaclass=MetaBase):
         _params = [(_K, _V) for _K, _V in kwargs.items()]
         _arg_mapper = filter(lambda x: x if x[0] in kwargs.keys(
         ) and x[0] != "type" else None, _params)
-        _filted = {_K: _V for _K, _V in filter(
+        _filter = {_K: _V for _K, _V in filter(
             lambda x: x is not None, _arg_mapper)}
-        _obj = cls(**_filted)
+        _obj = cls(**_filter)
         return _obj
 
     raw = property(lambda obj: obj._data, ..., ...)
