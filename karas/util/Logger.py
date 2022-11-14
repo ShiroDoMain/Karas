@@ -67,12 +67,12 @@ def os_check(color):
 class Logging:
 
     def __init__(
-        self,
-        loggerLevel: Union[str, int],
-        botId: int,
-        filename: str = None,
-        logFile: bool = False,
-        recordLevel: str = None
+            self,
+            loggerLevel: Union[str, int],
+            botId: int,
+            filename: str = None,
+            logFile: bool = False,
+            recordLevel: str = None
     ) -> None:
         self.logging = logging.getLogger()
         self.logging.setLevel(level=loggerLevel)
@@ -80,13 +80,20 @@ class Logging:
         self.handle = logging.StreamHandler()
         self.handle.setLevel(level=loggerLevel)
         self._logFile = logFile
+        self.filename = filename
         self._callbasks = {}
-        self._recordLevel = recordLevel.upper() if recordLevel is not None else loggerLevel
-        if self._logFile:
-            self.filename = filename
+        self._recordLevel = (recordLevel and recordLevel.upper()) or loggerLevel
+        if logFile:
             if self.filename is None and not os.path.exists("logs"):
                 os.mkdir("logs")
         self.logging.addHandler(hdlr=self.handle)
+        self._level = {
+            "INFO": 0,
+            "DEBUG": 1,
+            "WARNING": 2,
+            "ERROR": 3
+        }
+        self._logLv = self._level[self._recordLevel]
 
     @property
     def callbacks(self) -> List:
@@ -111,7 +118,7 @@ class Logging:
 
     def _wirte(self, text, _localtime) -> None:
         with open(self.filename or time.strftime("logs/%Y-%m-%d.log", _localtime), "a") as f:
-            f.write(text+"\n")
+            f.write(text + "\n")
 
     def format_time(self, msg: str, name: str, qq: int, level: str, _color: str = ""):
         current_time = time.localtime()
@@ -122,7 +129,7 @@ class Logging:
         if self.callbacks:
             for cb, args, kws in self.callbacks.values():
                 cb(_log, level, *args, **kws)
-        if level == self._recordLevel and self._logFile:
+        if self._level[level] <= self._logLv and self._logFile:
             self._wirte(_log, current_time)
         return _format
 
@@ -134,7 +141,7 @@ class Logging:
     @os_check("GREEN")
     def info(self, msg, name: str = "bot", qq: int = None, _color: str = ""):
         self.logging.info(self.format_time(msg=msg, name=name,
-                          qq=qq, level="INFO", _color=_color))
+                                           qq=qq, level="INFO", _color=_color))
 
     @os_check("YELLOW")
     def warning(self, msg, name: str = "bot", qq: int = None, _color: str = ""):

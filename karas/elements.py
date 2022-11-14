@@ -148,23 +148,26 @@ class Voice(ElementBase):
 class Xml(ElementBase):
     xml: str
 
-    def __init__(self, **kwargs):
+    def __init__(self, xml: str, **kwargs):
         self.type: str = "Xml"
+        self.xml = xml
         super().__init__(**kwargs)
 
 
 class Json(ElementBase):
     json: str
 
-    def __init__(self, **kwargs):
+    def __init__(self, json: str, **kwargs):
         self.type: str = "Json"
+        self.json = json
         super().__init__(**kwargs)
 
 
 class App(ElementBase):
     content: str
-    def __init__(self, **kwargs):
+    def __init__(self, content: str, **kwargs):
         self.type: str = "App"
+        self.content = content
         super().__init__(**kwargs)
 
 
@@ -183,16 +186,18 @@ class Poke(ElementBase):
     """
     name: str
 
-    def __init__(self, **kwargs):
+    def __init__(self, name: str, **kwargs):
         self.type: str = "Poke"
+        self.name = name
         super().__init__(**kwargs)
 
 
 class Dice(ElementBase):
     value: int
 
-    def __init__(self, **kwargs):
+    def __init__(self, value: int, **kwargs):
         self.type: str = "Dice"
+        self.value = value
         super().__init__(**kwargs)
 
 
@@ -229,8 +234,25 @@ class MusicShare(ElementBase):
     musicUrl: str
     brief: str
 
-    def __init__(self, **kwargs):
+    def __init__(
+        self,
+        kind: str,
+        title: str,
+        summary: str,
+        jumpUrl: str,
+        pictureUrl: str,
+        musicUrl: str,
+        brief: str, 
+        **kwargs
+        ):
         self.type: str = "MusicShare"
+        self.kind = kind,
+        self.title = title,
+        self.summary = summary,
+        self.jumpUrl = jumpUrl,
+        self.pictureUrl = pictureUrl
+        self.musicUrl = musicUrl
+        self.brief = brief
         super().__init__(**kwargs)
 
 
