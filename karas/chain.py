@@ -165,7 +165,7 @@ class Forward(ElementBase):
     def build(cls, senders: List[Dict[int, str]], messages: List[Union[MessageChain, List[ElementBase]]]) -> "Forward":
         """Args:
 
-            sender:发送者列表，长度应当与消息列表一致或者为1,格式为[{id,name}] 
+            senders:发送者列表，长度应当与消息列表一致或者为1,格式为[{id,name}]
 
                 例: [{123,"senderName1"},{234:"senderName2"}]
 
