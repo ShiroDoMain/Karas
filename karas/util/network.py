@@ -18,14 +18,14 @@ def error_throw(func):
             else:
                 return func(obj, *args, **kwargs)
         except ConnectException as ce:
-            obj.logging.error(f"cannot connect host {obj.host},trying reconnect")
-            for reload in range(1, 6):
-                obj.logging.warning(f"try connect {obj.host} {reload}/5")
+            obj.logging.error(f"cannot connect host {obj.host},try again")
+            for step in range(1, 11):
+                obj.logging.warning(f"try connect {obj.host} {step}/10")
                 try:
                     return await func(obj, *args, **kwargs)
                 except ConnectException:
-                    await asyncio.sleep(5)
-                except Exception:
+                    await asyncio.sleep(8)
+                except Exception as e:
                     traceback.print_exc()
                     await asyncio.sleep(5)
             obj.logging.error("connect fail, closing...")
