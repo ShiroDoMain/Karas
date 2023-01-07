@@ -1,10 +1,10 @@
 from enum import Enum
 from typing import Union
-from karas.chain import MessageChain
-from karas.util import BaseModel
-from karas.Sender import Client, Friend, Group, Member, Operator, Stranger, Subject
+
+from karas.sender import Client, Friend, Group, Member, Operator, Subject
 from karas.messages import MessageBase, MessageEnum
 from karas.permission import Permission
+from karas.util import BaseModel
 
 __events__ = {
     "messageEvent":
@@ -78,6 +78,10 @@ class RequestEvent(EventBase):
     groupId: int
     nick: str
     message: str
+
+    def __init__(self, *args, **kws):
+        super().__init__(args, kws)
+        self.operate = None
 
     @property
     def accept(self):
@@ -187,6 +191,7 @@ class BotLeaveEventKick(GroupEventBase):
     """Bot被踢出一个群"""
     type: str = "BotLeaveEventKick"
     operator: Member
+    group: Group
 
     def __str__(self) -> str:
         return super().__str__() + f":{self.group}"
@@ -467,8 +472,6 @@ class CommandExecutedEvent(EventBase):
     friend: Friend
     member: Member
     args: dict
-
-
 
 
 class EventEnum(Enum):

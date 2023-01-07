@@ -40,7 +40,7 @@ class AccountException(BotBaseException):
 
 
 class ConnectException(BotBaseException):
-    "连接错误"
+    """连接错误"""
     pass
 
 

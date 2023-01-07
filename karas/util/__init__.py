@@ -29,7 +29,7 @@ class BaseModel(metaclass=MetaBase):
             setattr(self, _k, _v)
 
     @classmethod
-    def parse(cls, *args, **kwargs) -> "BaseModel":
+    def parse(cls, *_, **kwargs) -> "BaseModel":
         _params = [(_K, _V) for _K, _V in kwargs.items()]
         _arg_mapper = filter(lambda x: x if x[0] in kwargs.keys(
         ) and x[0] != "type" else None, _params)

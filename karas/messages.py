@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Union
 from karas.util import BaseModel
-from karas.Sender import Client, Member, Sender, Friend, Subject, Stranger, Group
+from karas.sender import Client, Member, Sender, Friend, Subject, Stranger, Group
 from karas.chain import MessageChain
 from karas.elements import ElementBase
 
@@ -27,7 +27,8 @@ class GroupMessage(MessageBase):
         self.group = kws.get("sender") and self.sender.group
 
     def __str__(self) -> str:
-        return f"GroupMessage:[{self.sender.group.name}({self.sender.group.id})]{self.sender.memberName}({self.sender.id}) => " + super().__str__()
+        return f"GroupMessage:[{self.sender.group.name}({self.sender.group.id})]" \
+               f"{self.sender.memberName}({self.sender.id}) => " + super().__str__()
 
 
 class FriendMessage(MessageBase):
@@ -56,9 +57,6 @@ class TempMessage(MessageBase):
 
 class StrangerMessage(MessageBase):
     """stranger message event base
-
-    Args:
-        MessageBase (_type_): _description_
     """
     type: str = "StrangerMessage"
     sender: Sender
@@ -73,6 +71,7 @@ class OtherClientMessage(MessageBase):
     sender: Client
     messageChain: MessageChain
 
+
 class FriendSyncMessage(MessageBase):
     """好友同步消息"""
     type: str = "FriendSyncMessage"
@@ -80,7 +79,7 @@ class FriendSyncMessage(MessageBase):
     messageChain: MessageChain
 
     def __str__(self) -> str:
-        return super().__str__()+": "+self.messageChain.__str__()
+        return super().__str__() + ": " + self.messageChain.__str__()
 
 
 class GroupSyncMessage(MessageBase):
@@ -90,7 +89,7 @@ class GroupSyncMessage(MessageBase):
     messageChain: MessageChain
 
     def __str__(self) -> str:
-        return super().__str__()+": " + self.messageChain.__str__()
+        return super().__str__() + ": " + self.messageChain.__str__()
 
 
 class TempSyncMessage(MessageBase):
@@ -100,7 +99,7 @@ class TempSyncMessage(MessageBase):
     messageChain: MessageChain
 
     def __str__(self) -> str:
-        return super().__str__()+": " + self.messageChain.__str__()
+        return super().__str__() + ": " + self.messageChain.__str__()
 
 
 class StrangerSyncMessage(MessageBase):
@@ -110,8 +109,7 @@ class StrangerSyncMessage(MessageBase):
     messageChain: MessageChain
 
     def __str__(self) -> str:
-        return super().__str__()+": " + self.messageChain.__str__()
-
+        return super().__str__() + ": " + self.messageChain.__str__()
 
 
 class MessageEnum(Enum):

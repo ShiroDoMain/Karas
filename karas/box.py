@@ -28,7 +28,7 @@ from karas.elements import (
     GroupConfig,
     MemberInfo
 )
-from karas.Sender import (
+from karas.sender import (
     Group,
     Sender,
     Friend,
@@ -40,7 +40,7 @@ from karas.Sender import (
     Announcement,
 )
 from karas.chain import MessageChain, Quote, Forward, node
-from karas.permission import AdministartorPermission, MemberPermission, OwnerPermission
+from karas.permission import AdministratorPermission, MemberPermission, OwnerPermission
 from karas.event import (
     RequestEvent,
     BotOnlineEvent,

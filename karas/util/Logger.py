@@ -1,10 +1,10 @@
-from enum import Enum
-import logging
 import ctypes
-import sys
+import logging
 import os
+import sys
 import time
-from typing import Any, Callable, List, Optional, Union
+from enum import Enum
+from typing import Callable, List, Optional, Union
 
 
 class WindowsCMD(Enum):
@@ -68,7 +68,7 @@ class Logging:
 
     def __init__(
             self,
-            loggerLevel: Union[str, int],
+            level: Union[str, int],
             botId: int,
             description: str = "bot",
             filename: str = None,
@@ -77,14 +77,15 @@ class Logging:
     ) -> None:
         self.description = description
         self.logging = logging.getLogger()
-        self.logging.setLevel(level=loggerLevel)
+        self.level = level.upper() if isinstance(level, str) else level
+        self.logging.setLevel(level=self.level)
         self.botId = botId
         self.handle = logging.StreamHandler()
-        self.handle.setLevel(level=loggerLevel)
+        self.handle.setLevel(level=self.level)
         self._logFile = logFile
         self.filename = filename
         self._callbacks = {}
-        self._recordLevel = (recordLevel and recordLevel.upper()) or loggerLevel
+        self._recordLevel = (recordLevel and recordLevel.upper()) or self.level
         if logFile:
             if self.filename is None and not os.path.exists("logs"):
                 os.mkdir("logs")
@@ -103,22 +104,24 @@ class Logging:
 
     def addCallback(self, callback: Callable, namespace: Optional[str] = None, *args, **kwargs) -> None:
         """add a callback
+        Args:
             callback(logText:str, logLevel:str,*args, **kwargs)
+            namespace(None, str): callback name
 
         """
         namespace = namespace or callback.__name__
         self._callbacks[namespace] = (callback, args, kwargs)
 
-    def removeCallback(self, callable: Union[str, Callable]) -> bool:
+    def removeCallback(self, callback: Union[str, Callable]) -> bool:
         """remove callback, if not return false"""
-        namespace = callable if isinstance(
-            callable, str) else callable.__name__
+        namespace = callback if isinstance(
+            callback, str) else callback.__name__
         if namespace not in self.callbacks:
             return False
         del self._callbacks[namespace]
         return True
 
-    def _wirte(self, text, _localtime) -> None:
+    def _write(self, text, _localtime) -> None:
         with open(self.filename or time.strftime("logs/%Y-%m-%d.log", _localtime), "a") as f:
             f.write(text + "\n")
 
@@ -126,31 +129,32 @@ class Logging:
         current_time = time.localtime()
         color = _color if _color else ""
         color_end = '\033[0m' if color else ""
-        _log = f"{time.strftime('%Y-%m-%d %H:%m:%S', current_time)}-[{level}]-{name or self.description}/{qq or self.botId}: {msg}"
+        _log = f"{time.strftime('%Y-%m-%d %H:%m:%S', current_time)}" \
+               f"-[{level}]-{name or self.description}/{qq or self.botId}: {msg} "
         _format = f"{color}{_log}{color_end}"
         if self.callbacks:
             for cb, args, kws in self._callbacks.values():
                 cb(_log, level, *args, **kws)
         if self._level[level] <= self._logLv and self._logFile:
-            self._wirte(_log, current_time)
+            self._write(_log, current_time)
         return _format
 
     @os_check("BLUE")
-    def debug(self, msg, name: str = None, qq: int = None, _color: str = ""):
+    def debug(self, msg, name: str = None, qq: int = None, _color: str = "", *args):
         self.logging.debug(self.format_time(
-            msg=msg, name=name, qq=qq, level="DEBUG", _color=_color))
+            msg=msg, name=name, qq=qq, level="DEBUG", _color=_color), *args)
 
     @os_check("GREEN")
-    def info(self, msg, name: str = None, qq: int = None, _color: str = ""):
+    def info(self, msg, name: str = None, qq: int = None, _color: str = "", *args):
         self.logging.info(self.format_time(msg=msg, name=name,
-                                           qq=qq, level="INFO", _color=_color))
+                                           qq=qq, level="INFO", _color=_color), *args)
 
     @os_check("YELLOW")
-    def warning(self, msg, name: str = None, qq: int = None, _color: str = ""):
+    def warning(self, msg, name: str = None, qq: int = None, _color: str = "", *args):
         self.logging.warning(self.format_time(
-            msg=msg, name=name, qq=qq, level="WARNING", _color=_color))
+            msg=msg, name=name, qq=qq, level="WARNING", _color=_color), *args)
 
     @os_check("RED")
-    def error(self, msg, name: str = None, qq: int = None, _color: str = ""):
+    def error(self, msg, name: str = None, qq: int = None, _color: str = "", *args):
         self.logging.error(self.format_time(
-            msg=msg, name=name, qq=qq, level="ERROR", _color=_color))
+            msg=msg, name=name, qq=qq, level="ERROR", _color=_color), *args)

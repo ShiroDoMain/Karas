@@ -5,13 +5,13 @@ from typing import Optional, Union
 import aiohttp
 from aiohttp.web_exceptions import HTTPRequestTimeout
 from functools import wraps
-from karas.Sender import ReceptorBase
+from karas.sender import ReceptorBase
 from karas.exceptions import BotBaseException, ConnectException, FunctionException
 
 
 def error_throw(func):
     @wraps(func)
-    async def _wrapper(obj: "Yurine", *args, **kwargs):
+    async def _wrapper(obj, *args, **kwargs):
         try:
             if inspect.iscoroutinefunction(func):
                 return await func(obj, *args, **kwargs)
@@ -38,8 +38,9 @@ def error_throw(func):
         except BotBaseException as be:
             obj.logging.error(str(be))
             raise be
-        except HTTPRequestTimeout as exc:
+        except HTTPRequestTimeout:
             obj.logging.error(f"{func.__name__} timeout")
+            raise
         except Exception as exc:
             obj.logging.error(f"Unknown error {exc}")
             raise

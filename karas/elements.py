@@ -74,10 +74,10 @@ class Image(ElementBase):
         self.type: str = "Image"
         self.ftype = "img"
         self.file = file
-    
-    async def download(self, path, filename = None):
-        filename = filename or self.imageId.replace("}","").replace("{","")
-        _save_path = os.path.join(path,filename)
+
+    async def download(self, path, filename=None):
+        filename = filename or self.imageId.replace("}", "").replace("{", "")
+        _save_path = os.path.join(path, filename)
         if os.path.exists(_save_path):
             return None
         async with ClientSession() as _session:
@@ -86,41 +86,22 @@ class Image(ElementBase):
                     _file.write(await _resp.read())
 
     def __str__(self) -> str:
-        return f"[图片]:{self.imageId if hasattr(self,'imageId') else ''}"
+        return f"[图片]:{self.imageId if hasattr(self, 'imageId') else ''}"
 
-    def __call__(self, *args: Any, **kwds: Any) -> None:
-        self.imageId = kwds.get("imageId")
-        self.url = kwds.get("url")
+    def __call__(self, *args: Any, **kws: Any) -> None:
+        self.imageId = kws.get("imageId")
+        self.url = kws.get("url")
 
 
-class FlashImage(ElementBase):
+class FlashImage(Image):
     imageId: str
     url: str
     path: str
     base64: str
 
-    def __init__(self, file: Union[str, BinaryIO, bytes, None] = None, *args, **kwargs) -> None:
-        super().__init__(**kwargs)
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
         self.type: str = "FlashImage"
-        self.ftype = "img"
-        self.file = file
-        
-    async def download(self, path, filename = None):
-        filename = filename or self.imageId.replace("}","").replace("{","")
-        _save_path = os.path.join(path,filename)
-        if os.path.exists(_save_path):
-            return None
-        async with ClientSession() as _session:
-            async with _session.get(self.url) as _resp:
-                with open(_save_path, "wb") as _file:
-                    _file.write(await _resp.read())
-                    
-    def __str__(self) -> str:
-        return f" [闪照:{self.imageId}]"
-
-    def __call__(self, *args: Any, **kwds: Any) -> None:
-        self.imageId = kwds.get("imageId")
-        self.url = kwds.get("url")
 
 
 class Voice(ElementBase):
@@ -130,7 +111,7 @@ class Voice(ElementBase):
     base64: Optional[str]
     length: int
 
-    def __init__(self, file: Union[str, BinaryIO, bytes, None] = None, *args, **kwargs) -> None:
+    def __init__(self, file: Union[str, BinaryIO, bytes, None] = None, *_, **kwargs) -> None:
         super().__init__(**kwargs)
         self.type: str = "Voice"
         self.ftype = "voice"
@@ -140,9 +121,9 @@ class Voice(ElementBase):
     def __str__(self) -> str:
         return f" [语音:{self.voiceId}]"
 
-    def __call__(self, *args: Any, **kwds: Any) -> None:
-        self.voiceId = kwds.get("voiceId")
-        self.url = kwds.get("url")
+    def __call__(self, *args: Any, **kws: Any) -> None:
+        self.voiceId = kws.get("voiceId")
+        self.url = kws.get("url")
 
 
 class Xml(ElementBase):
@@ -165,11 +146,11 @@ class Json(ElementBase):
 
 class App(ElementBase):
     content: str
+
     def __init__(self, content: str, **kwargs):
         self.type: str = "App"
         self.content = content
         super().__init__(**kwargs)
-
 
 
 class Poke(ElementBase):
@@ -235,21 +216,21 @@ class MusicShare(ElementBase):
     brief: str
 
     def __init__(
-        self,
-        kind: str,
-        title: str,
-        summary: str,
-        jumpUrl: str,
-        pictureUrl: str,
-        musicUrl: str,
-        brief: str, 
-        **kwargs
-        ):
+            self,
+            kind: str,
+            title: str,
+            summary: str,
+            jumpUrl: str,
+            pictureUrl: str,
+            musicUrl: str,
+            brief: str,
+            **kwargs
+    ):
         self.type: str = "MusicShare"
-        self.kind = kind,
-        self.title = title,
-        self.summary = summary,
-        self.jumpUrl = jumpUrl,
+        self.kind = kind
+        self.title = title
+        self.summary = summary
+        self.jumpUrl = jumpUrl
         self.pictureUrl = pictureUrl
         self.musicUrl = musicUrl
         self.brief = brief
@@ -261,10 +242,6 @@ class FileDownloadInfo(ElementBase):
     sha1    str	文件sha1校验
     md5	str	文件md5校验
     url	str	文件下载url
-
-
-    Args:
-        ElementBase (_type_): _description_
     """
     sha1: str
     md5: str
@@ -370,14 +347,14 @@ class GroupConfig(ElementBase):
     anonymousChat: bool
 
     def __init__(
-        self,
-        name: str = None,
-        announcement: str = None,
-        confessTalk: bool = None,
-        allowMemberInvite: bool = None,
-        autoApprove: bool = None,
-        anonymousChat: bool = None,
-        **kws,
+            self,
+            name: str = None,
+            announcement: str = None,
+            confessTalk: bool = None,
+            allowMemberInvite: bool = None,
+            autoApprove: bool = None,
+            anonymousChat: bool = None,
+            **kws,
     ) -> None:
         super().__init__(**kws)
         self.name = name

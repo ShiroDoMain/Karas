@@ -18,7 +18,7 @@ import aiohttp
 from karas.util import DefaultNamespace, status_code_exception
 from karas.util.sync import async_to_sync_wrap
 from karas.chain import Forward, MessageChain, node
-from karas.Sender import Friend, Group, Member, Stranger, ReceptorBase, Announcement
+from karas.sender import Friend, Group, Member, Stranger, ReceptorBase, Announcement
 from karas.messages import MessageBase
 from karas.event import Auto_Switch_Event, EventBase, MemberJoinRequestEvent, NewFriendRequestEvent, RequestEvent, \
     Event, NudgeEvent, BotOfflineEventActive, BotOnlineEvent
@@ -29,7 +29,7 @@ from karas.exceptions import *
 from karas.util.Logger import Logging
 from karas.util.network import error_throw, URL_Route, wrap_data_json
 
-__version__ = "0.2.5"
+__version__ = "0.2.6"
 
 
 async def _build_content_json(
@@ -313,7 +313,7 @@ class Yurine(object):
         Note: 如果要将一个函数监听绑定多个事件类型，需要注意函数能接受的参数必须是这些消息时间类型所具有的共通的参数，例如你不能让一个带有Friend类型参数的函数监听GroupMessage
 
         Returns:
-            None: NoReturn
+            NoReturn
         """
         registerEvents = [(e if isinstance(e, str) else e.type) for e in registerEvent] if isinstance(
             registerEvent, List) else (registerEvent,) if isinstance(registerEvent, str) else (registerEvent.type,)
@@ -1638,6 +1638,9 @@ class Yurine(object):
             self.close()
 
     def start(self) -> Optional["Yurine"]:
+        """
+        如果不是没有使用with语句或者run_forever,那么必须显示调用start启动
+        """
         self.logging.debug("running function start")
         if self._is_running:
             return None

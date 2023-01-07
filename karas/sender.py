@@ -18,13 +18,6 @@ class ReceptorBase(BaseModel):
             kws["permission"] = PermissionEnum[_permission].value()
         super().__init__(**kws)
 
-    # def __init__(self, **attrs) -> None:
-    #     for _attr,_value in attrs.items():
-    #         _attr_type = self.__annotations__.get(_attr)
-    #         if not isinstance(_value,_attr_type):
-    #             _value = _attr_type(_value) if isinstance(_value,str) else _attr_type(**_value)
-    #         setattr(self,_attr,_value)
-
 
 class Group(ReceptorBase):
     """

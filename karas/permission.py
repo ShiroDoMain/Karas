@@ -1,4 +1,5 @@
 from enum import Enum
+from karas.util import BaseModel
 
 
 class Permission:
@@ -7,7 +8,7 @@ class Permission:
     def __init__(self, *args, **kwargs) -> None:
         pass
 
-    def __eq__(self, __o: object) -> bool:
+    def __eq__(self, __o: BaseModel) -> bool:
         if isinstance(__o, self.__class__):
             return __o.type.upper() == self.type.upper()
         return self.type == __o if isinstance(__o, str) else self.type == __o.type
@@ -16,7 +17,7 @@ class Permission:
         return self.type
 
 
-class AdministartorPermission(Permission):
+class AdministratorPermission(Permission):
     type: str = "ADMINISTRATOR"
 
 
@@ -29,6 +30,6 @@ class MemberPermission(Permission):
 
 
 class PermissionEnum(Enum):
-    ADMINISTRATOR: "AdministartorPermission" = AdministartorPermission
+    ADMINISTRATOR: "AdministratorPermission" = AdministratorPermission
     OWNER: "OwnerPermission" = OwnerPermission
     MEMBER: "MemberPermission" = MemberPermission
