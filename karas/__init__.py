@@ -55,7 +55,7 @@ class Karas(object):
     @classmethod
     async def bot_event(cls, _event: dict):
         # bot触发的事件
-        _event: MessageBase = Auto_Switch_Event.parse_json(**_event)
+        _event: Union[EventBase, MessageBase] = Auto_Switch_Event.parse_json(**_event)
         return _event
 
     @classmethod

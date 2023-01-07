@@ -38,7 +38,7 @@ class BaseModel(metaclass=MetaBase):
         _obj = cls(**_filter)
         return _obj
 
-    raw = property(lambda obj: obj._data, ..., ...)
+    raw = property(lambda self: self._data, ..., ...)
 
     def __str__(self) -> str:
         return self.__dict__.__str__()
@@ -65,5 +65,5 @@ class DefaultNamespace:
         pass
 
     @classmethod
-    def gen(self) -> str:
+    def gen(cls) -> str:
         return hashlib.md5(str(time()).encode()).hexdigest()[:8]

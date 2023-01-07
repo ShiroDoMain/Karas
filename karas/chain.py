@@ -2,7 +2,7 @@ from time import time
 from karas.util import BaseModel
 from karas.elements import ElementBase
 from karas.elements import MessageElementEnum
-from typing import List, Dict, Optional, Union
+from typing import List, Dict, Optional, Union, Type
 
 
 class MessageChain(BaseModel):
@@ -29,7 +29,7 @@ class MessageChain(BaseModel):
             _elements += [_e.elements for _e in self.fetch(attr)]
         return _elements
 
-    def fetch(self, element: Union[str, "ElementBase"]) -> Optional[List["ElementBase"]]:
+    def fetch(self, element: Union[str, Type[ElementBase]]) -> Optional[List["ElementBase"]]:
         """从消息链中取出指定类型的消息对象列表
 
         Args:
@@ -40,7 +40,7 @@ class MessageChain(BaseModel):
         """
         return getattr(self, element if isinstance(element, str) else element.type, None)
 
-    def fetchone(self, element: Union["ElementBase", str]) -> Optional["ElementBase"]:
+    def fetchone(self, element: Union[Type[ElementBase], str]) -> Optional["ElementBase"]:
         """从消息链中取出指定类型的第一个消息对象
 
         Args:
@@ -52,7 +52,7 @@ class MessageChain(BaseModel):
         _element = element if isinstance(element, str) else element.type
         return (self.has(_element) or None) and getattr(self, _element, None)[0]
 
-    def has(self, element: Union[str, "ElementBase"]) -> bool:
+    def has(self, element: Union[str, Type[ElementBase]]) -> bool:
         """判断消息链中是否存在该类型的消息对象
 
         Args:
@@ -63,7 +63,7 @@ class MessageChain(BaseModel):
         """
         return hasattr(self, element if isinstance(element, str) else element.type)
 
-    def has_all(self, *element: Union["ElementBase", str, List]) -> bool:
+    def has_all(self, *element: Union[Type[ElementBase], str, List]) -> bool:
         """判断消息链中是否包含所有指定消息类型
 
         Returns:
@@ -71,7 +71,7 @@ class MessageChain(BaseModel):
         """
         return all((self.has(_e) for _e in element))
 
-    def has_any(self, *element: Union["ElementBase", str, List]) -> bool:
+    def has_any(self, *element: Union[Type[ElementBase], str, List]) -> bool:
         """判断消息链中是否至少包含一个指定消息类型
 
         Returns:
