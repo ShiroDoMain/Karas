@@ -1,7 +1,19 @@
 import inspect
 from aiohttp import ClientSession, ClientWebSocketResponse
 import asyncio
-from typing import Awaitable, BinaryIO, Callable, Dict, List, Optional, Tuple, Union, AsyncGenerator
+from typing import (
+    Coroutine,
+    Awaitable,
+    BinaryIO,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Tuple,
+    Union,
+    AsyncGenerator,
+    NoReturn
+)
 import aiohttp
 from karas.util import DefaultNamespace, status_code_exception
 from karas.util.sync import async_to_sync_wrap
@@ -85,6 +97,14 @@ class Karas(object):
                 ca(**_o)
 
 
+def _get_event_loop():
+    try:
+        _loop = asyncio.get_running_loop()
+    except RuntimeError:
+        _loop = asyncio.get_event_loop()
+    return _loop
+
+
 @async_to_sync_wrap
 class Yurine(object):
     """
@@ -96,9 +116,9 @@ class Yurine(object):
             self,
             host: str,
             port: int,
-            qq: int,
+            account: int,
             verifyKey: str,
-            loop: asyncio.BaseEventLoop = None,
+            loop: asyncio.AbstractEventLoop = None,
             karas: Karas = None,
             protocol: str = "ws",
             sessionKey: str = None,
@@ -113,16 +133,16 @@ class Yurine(object):
         self._port = port
         self.url = f"{protocol}://{host}:{port}"
         self.protocol = protocol
-        self.account = qq
+        self._account = account
         self._verifyKey = verifyKey
         self.sessionKey = sessionKey
         self._session = session
         self._ws = ws
 
         self.route = URL_Route(self.url)
-        self.logging = Logging(loggerLevel.upper(), qq, filename=logFileName, logFile=logToFile,
+        self.logging = Logging(loggerLevel.upper(), account, filename=logFileName, logFile=logToFile,
                                recordLevel=logRecordLevel)
-        self._loop = loop or self._get_event_loop()
+        self._loop = loop or _get_event_loop()
         self.karas = karas or Karas
         self.karas.loop = self.loop
 
@@ -130,7 +150,7 @@ class Yurine(object):
 
         self._is_running = False
         self._receiver_is_running = False
-        self._receivData = {}
+        self._receiveData = {}
         self._tasks = {}
 
     @property
@@ -161,15 +181,12 @@ class Yurine(object):
     def is_running(self):
         return self._is_running
 
-    def _get_event_loop(self):
-        try:
-            _loop = asyncio.get_running_loop()
-        except RuntimeError:
-            _loop = asyncio.get_event_loop()
-        return _loop
+    @property
+    def account(self):
+        return self._account
 
     @error_throw
-    async def _initialization(self) -> None:
+    async def _initialization(self) -> int:
         """初始化"""
         self.logging.debug(f"URL:  {self.url}")
         if not self.session:
@@ -239,7 +256,7 @@ class Yurine(object):
         return 0
 
     @error_throw
-    async def _receiver(self, data: Dict = None) -> None:
+    async def _receiver(self, data: Dict = None) -> NoReturn:
         """事件监听器"""
         self._receiver_is_running = True
         while True:
@@ -267,7 +284,7 @@ class Yurine(object):
                     if isinstance(_event, Event) else await _parser.asend(False)
             elif syncId:
                 self.logging.debug(f"sync Event {_receive_data}")
-                self._receivData[syncId] = _receive_data
+                self._receiveData[syncId] = _receive_data
             else:
                 self.logging.debug(f"Unknown event:{_receive_data}")
             if data:
@@ -282,18 +299,18 @@ class Yurine(object):
             callback: 设定一个callback,当监听到指定事件会将该事件原始数据(Dict)作为第一个参数传入
             cb_args:传入到callback的其他参数
 
-            callback用法:
-            def callback(eventData: Dict, arg1, arg2,...) -> ...: ...
-            yurinelisten(GroupMessage, callback=callback, cb_args=(a1,a2,a3)0) -> None:...
+        callback用法:
+        def callback(eventData: Dict, arg1, arg2,...) -> ...: ...
+        yurine.listen(GroupMessage, callback=callback, cb_args=(a1,a2,a3)0) -> None:...
 
-            使用函数处理:
-            @yurine.listen("GroupMessage")
-            async def listen_gm(message:MessageChain):...
+        使用函数处理:
+        @yurine.listen("GroupMessage")
+        async def listen_gm(message:MessageChain):...
 
-            @yurine.listen(["GroupMessage", "TempMessage"])
-            async def multi_listen(message:MessageChain) -> None: ...
+        @yurine.listen(["GroupMessage", "TempMessage"])
+        async def multi_listen(message:MessageChain) -> None: ...
 
-            PS: 如果要将一个函数监听绑定多个事件类型，需要注意函数能接受的参数必须是这些消息时间类型所具有的共通的参数，例如你不能让一个带有Friend类型参数的函数监听GroupMessage
+        Note: 如果要将一个函数监听绑定多个事件类型，需要注意函数能接受的参数必须是这些消息时间类型所具有的共通的参数，例如你不能让一个带有Friend类型参数的函数监听GroupMessage
 
         Returns:
             None: NoReturn
@@ -301,18 +318,22 @@ class Yurine(object):
         registerEvents = [(e if isinstance(e, str) else e.type) for e in registerEvent] if isinstance(
             registerEvent, List) else (registerEvent,) if isinstance(registerEvent, str) else (registerEvent.type,)
 
-        def register_decorator(callable: Awaitable):
-            def register_wrapper(*args, **kwargs):
-                for event in registerEvents:
+        def register_decorator(func: Awaitable):
+            """
+            Args:
+                func: 监听到事件时所作的动作
+            """
+            def register_wrapper(*_, **__):
+                for _event in registerEvents:
                     self.logging.debug(
-                        f"register listener [{callable.__name__}] for Event[{event}]"
+                        f"register listener [{func.__name__}] for Event[{_event}]"
                     )
-                    if Karas.listeners.get(event):
-                        Karas.listeners.get(event).append(
-                            (callable, callback, cb_args))
+                    if Karas.listeners.get(_event):
+                        Karas.listeners.get(_event).append(
+                            (func, callback, cb_args))
                     else:
-                        Karas.listeners[event] = [
-                            (callable, callback, cb_args)]
+                        Karas.listeners[_event] = [
+                            (func, callback, cb_args)]
 
             return register_wrapper()
 
@@ -378,7 +399,7 @@ class Yurine(object):
             requestEvent (RequestEvent): 一个请求事件
             message (str, optional): 拒绝该请求时附带的消息. Defaults to None.
         """
-        if not isinstance(requestEvent, [NewFriendRequestEvent, MemberJoinRequestEvent]):
+        if not isinstance(requestEvent, (NewFriendRequestEvent, MemberJoinRequestEvent)):
             self.logging.error("非法请求")
         else:
             requestEvent.message = message
@@ -439,7 +460,7 @@ class Yurine(object):
             )
 
     @error_throw
-    async def uploadFile(self, group: Union[int, Group], file: Union[str, BinaryIO, bytes, None], type: str = "group",
+    async def uploadFile(self, group: Union[int, Group], file: Union[str, BinaryIO, bytes, None], type_: str = "group",
                          path: str = "") -> File:
         """上传群文件，返回的是上传的该文件对象
 
@@ -455,7 +476,7 @@ class Yurine(object):
                 self.route("/file/upload"),
                 data={
                     "sessionKey": self.sessionKey,
-                    "type": type,
+                    "type": type_,
                     "target": str(group if isinstance(group, int) else group.id),
                     "path": path,
                     "file": open(file, "rb") if isinstance(file, str) else file
@@ -465,7 +486,7 @@ class Yurine(object):
             return File(**parsed_data)
 
     @error_throw
-    async def uploadMultipart(self, obj: Union["Voice", "Image", "FlashImage"], type: str) -> None:
+    async def uploadMultipart(self, obj: Union["Voice", "Image", "FlashImage"], type_: str) -> None:
         """上传多媒体类型文件(语音, 图片),该方法仅作为上传方法，发送请使用sendXxxx(xxx,[Voice(file=xxx)])形式"""
         uploadType = "Image" if isinstance(obj, FlashImage) else obj.type
         if hasattr(obj, "url"):
@@ -474,23 +495,24 @@ class Yurine(object):
                 self.route(f"upload{uploadType}"),
                 data={
                     "sessionKey": self.sessionKey,
-                    "type": type,
+                    "type": type_,
                     obj.ftype: open(obj.file, "rb") if isinstance(
                         obj.file, str) else obj.file
                 }
         ) as _response:
             parsed_data = await self._raise_status(await _response.json())
             obj(**parsed_data)
+            obj.file = None
 
-    async def _element_check(self, element: "ElementBase", type: str, target: Union[int, Group, None] = None):
+    async def _element_check(self, element: "ElementBase", type_: str):
         if isinstance(element, (Image, Voice, FlashImage)):
-            await self.uploadMultipart(element, type=type)
+            await self.uploadMultipart(element, type_=type_)
         if isinstance(element, Forward):
             nodeList = element.nodeList
             if nodeList:
-                element.nodeList = [await self._element_check(node, type=type) for node in nodeList]
+                element.nodeList = [await self._element_check(node_, type_=type_) for node_ in nodeList]
         if isinstance(element, node):
-            element.messageChain = [await self._element_check(e, type=type) for e in
+            element.messageChain = [await self._element_check(e, type_=type_) for e in
                                     element.messageChain._get_elements()]
         if isinstance(element, File):
             raise FunctionException("文件上传请使用uploadFile方法，该方法仅支持发送消息")
@@ -527,7 +549,7 @@ class Yurine(object):
         Returns:
             int: 一个Int类型属性，标识本条消息，用于撤回和引用回复
         """
-        _chain = [(await self._element_check(_e, type="group", target=group)) for _e in Elements] \
+        _chain = [(await self._element_check(_e, type_="group")) for _e in Elements] \
             if not isinstance(Elements, MessageChain) else Elements.parse_to_json()
         content = await _build_content_json("group", group, quote, _chain)
         syncId = self.namespace.gen()
@@ -561,7 +583,7 @@ class Yurine(object):
         Returns:
             int: 一个Int类型属性，标识本条消息，用于撤回和引用回复
         """
-        _chain = [(await self._element_check(_e, type="friend")) for _e in Elements] \
+        _chain = [(await self._element_check(_e, type_="friend")) for _e in Elements] \
             if not isinstance(Elements, MessageChain) else Elements.parse_to_json()
         content = await _build_content_json("target", friend, quote, _chain)
         syncId = self.namespace.gen()
@@ -598,7 +620,7 @@ class Yurine(object):
         Returns:
             int: 一个Int类型属性，标识本条消息，用于撤回和引用回复
         """
-        _chain = [(await self._element_check(_e, type="temp")) for _e in Elements] \
+        _chain = [(await self._element_check(_e, type_="temp")) for _e in Elements] \
             if not isinstance(Elements, MessageChain) else Elements.parse_to_json()
         content = {
             "qq": member if isinstance(member, int) else member.id,
@@ -646,25 +668,24 @@ class Yurine(object):
             target: Union["ElementBase", "Friend", "Member", None] = None,
             subject: Union[int, "Group", "Friend", None] = None,
             kind: Union[str, "Group", "Friend", "Stranger", None] = None,
-            event: "NudgeEvent" = None,
+            event_: Optional["NudgeEvent"] = None,
     ) -> None:
         """发送头像戳一戳消息，你可以只传入目标对象或者是一个事件对象
 
         Args:
-            nudgeEvent:(Event): 戳一戳事件的主体，不为None时则对发出此事件的对象发送戳一戳
             target (Union[ElementBase]): 戳一戳的目标, QQ号, 可以为 bot QQ号
             subject (Union[int,Group,Friend]): 戳一戳接受主体(上下文), 戳一戳信息会发送至该主体, 为群号/好友QQ号
             kind (Union[str,Group,Friend,Stranger]): 上下文类型, 可选值 Friend, Group, Stranger
-
+            event_ (NudgeEvent): 如果直接传入该参数，则对象为该事件发起人,该参数应为NudgeEvent类型
         Returns:
             _type_:
         """
         if isinstance(target, NudgeEvent):
-            event = target
-        target = target if event is None else event.fromId
-        subject = subject if subject is not None else event.subject if event is not None \
+            event_ = target
+        target = target if event_ is None else event_.fromId
+        subject = subject if subject is not None else event_.subject if event_ is not None \
             else target.group if isinstance(target, Member) else target.id
-        kind = kind if kind is not None else event.subject.kind if event is not None \
+        kind = kind if kind is not None else event_.subject.kind if event_ is not None \
             else target.group.type if isinstance(target, Member) else target.type
         syncId = self.namespace.gen()
         await self.ws.send_json(
@@ -838,7 +859,7 @@ class Yurine(object):
     async def fetchFileList(
             self,
             target: Union[int, Group, Friend] = None,
-            id: str = "",
+            dir_id: str = "",
             path: str = None,
             withDownloadInfo: bool = False,
             offset: int = 1,
@@ -847,7 +868,7 @@ class Yurine(object):
         """获取文件列表
 
         Args:
-            id (str, optional): 文件夹id, 空串为根目录. Defaults to "".
+            dir_id (str, optional): 文件夹id, 空串为根目录. Defaults to "".
             path (str, optional): 文件夹路径, 文件夹允许重名, 不保证准确, 准确定位使用 id. Defaults to None.
             target (Union[int, Group, Friend], optional): 群聊或好友. Defaults to None.
             withDownloadInfo (bool, optional): 	是否携带下载信息，额外请求，无必要不要携带. Defaults to False.
@@ -863,7 +884,7 @@ class Yurine(object):
                 syncId=syncId,
                 command="file_list",
                 content={
-                    "id": id,
+                    "id": dir_id,
                     "path": path,
                     "target": target,
                     "withDownloadInfo": withDownloadInfo,
@@ -879,14 +900,14 @@ class Yurine(object):
     async def fetchFileInfo(
             self,
             target: Union[int, Group, Friend] = None,
-            id: str = "",
+            dir_id: str = "",
             path: str = None,
             withDownloadInfo: bool = False
     ) -> Optional[File]:
         """获取文件信息
 
         Args:
-            id (str, optional): 已经激活的Session. Defaults to "".
+            dir_id (str, optional): 文件夹id, 空串为根目录. Defaults to "".
             path (str, optional): 文件夹路径, 文件夹允许重名, 不保证准确, 准确定位使用 id. Defaults to None.
             target (Union[int,Group,Friend], optional): _description_. Defaults to None.
             withDownloadInfo (bool, optional): _description_. Defaults to False.
@@ -900,7 +921,7 @@ class Yurine(object):
                 syncId=syncId,
                 command="file_info",
                 content={
-                    "id": id,
+                    "id": dir_id,
                     "path": path,
                     "target": target,
                     "withDownloadInfo": withDownloadInfo
@@ -915,7 +936,7 @@ class Yurine(object):
             self,
             target: Union[int, Friend, Group],
             directoryName: str,
-            id: str = "",
+            dir_id: str = "",
             path: Optional[str] = None,
     ) -> Optional[File]:
         """创建文件夹
@@ -923,7 +944,7 @@ class Yurine(object):
         Args:
             target (Union[int, Friend, Group]): 群组或好友QQ，可以是int或者对象
             directoryName (str): 新建文件夹名
-            id (str, optional): 父目录id,空串为根目录. Defaults to "".
+            dir_id (str, optional): 父目录id,空串为根目录. Defaults to "".
             path (Optional[str], optional): 文件夹路径, 文件夹允许重名, 不保证准确, 准确定位使用 id. Defaults to None.
 
         Returns:
@@ -935,7 +956,7 @@ class Yurine(object):
                 syncId=syncId,
                 command="file_mkdir",
                 content={
-                    "id": id,
+                    "id": dir_id,
                     "path": path,
                     "target": target,
                     "directoryName": directoryName
@@ -948,18 +969,18 @@ class Yurine(object):
     async def fileDelete(
             self,
             target: Union[int, Friend, Group],
-            id: str = "",
+            file_id: str = "",
             path: Optional[str] = None,
-    ) -> str:
+    ) -> None:
         """删除文件
 
         Args:
             target (Union[int, Friend, Group]): 群或好友QQ
-            id (str, optional): 删除文件id. Defaults to "".
+            file_id (str, optional): 删除文件id. Defaults to "".
             path (Optional[str], optional): 文件夹路径, 文件夹允许重名, 不保证准确, 准确定位使用 id. Defaults to None.
 
         Returns:
-            str: _description_
+            None
         """
         syncId = self.namespace.gen()
         await self.ws.send_json(
@@ -967,29 +988,30 @@ class Yurine(object):
                 syncId=syncId,
                 command="file_delete",
                 content={
-                    "id": id,
+                    "id": file_id,
                     "path": path,
                     "target": target,
                 }
             )
         )
-        return await self._raise_status(syncId=syncId)
+        await self._raise_status(syncId=syncId)
+        return None
 
     @error_throw
     async def fileMove(
             self,
             target: Union[int, Friend, Group],
             path: str,
-            id: str = "",
+            file_id: str = "",
             moveTo: str = None,
             moveToPath: str = None,
-    ) -> str:
+    ) -> None:
         """移动文件
 
         Args:
             target (Union[int, Friend, Group]): 群或好友QQ
             path (str): 文件夹路径, 文件夹允许重名, 不保证准确, 准确定位使用 id
-            id (str, optional): 移动文件id. Defaults to "".
+            file_id (str, optional): 移动文件id. Defaults to "".
             moveTo (str, optional): 移动目标文件夹id. Defaults to None.
             moveToPath (str, optional): 移动目标文件路径, 文件夹允许重名, 不保证准确, 准确定位使用 moveTo. Defaults to None.
 
@@ -1007,7 +1029,7 @@ class Yurine(object):
                 syncId=syncId,
                 command="file_move",
                 content={
-                    "id": id,
+                    "id": file_id,
                     "path": path,
                     "target": target,
                     "moveTo": moveTo,
@@ -1015,23 +1037,24 @@ class Yurine(object):
                 }
             )
         )
-        return await self._raise_status(syncId=syncId)
+        await self._raise_status(syncId=syncId)
+        return None
 
     @error_throw
     async def fileRename(
             self,
             target: Union[int, Friend, Group],
             renameTo: str,
-            id: str = "",
+            file_id: str = "",
             path: str = None,
-    ) -> str:
+    ) -> None:
         """重命名文件
 
         Args:
             target (Union[int, Friend, Group]): 群号或好友QQ号
             path (str): 文件夹路径, 文件夹允许重名, 不保证准确, 准确定位使用 id
             renameTo (str): 新文件名
-            id (str, optional): 重命名文件id. Defaults to "".
+            file_id (str, optional): 重命名文件id. Defaults to "".
 
         Returns:
             str: 
@@ -1040,19 +1063,20 @@ class Yurine(object):
             wrap_data_json(
                 command="file_rename",
                 content={
-                    "id": id,
+                    "id": file_id,
                     "path": path,
                     "target": target,
                     "renameTo": renameTo
                 }
             )
         )
+        return None
 
     @error_throw
     async def deleteFriend(
             self,
             friend: Union[int, Friend],
-    ) -> str:
+    ) -> None:
         """删除好友
 
         Args:
@@ -1071,7 +1095,8 @@ class Yurine(object):
                 }
             )
         )
-        return await self._raise_status(syncId=syncId)
+        await self._raise_status(syncId=syncId)
+        return None
 
     @error_throw
     async def mute(
@@ -1079,7 +1104,7 @@ class Yurine(object):
             group: Union[int, Group],
             member: Union[int, Member],
             time: Optional[int],
-    ) -> str:
+    ) -> None:
         """禁言群成员
 
         Args:
@@ -1102,14 +1127,15 @@ class Yurine(object):
                 }
             )
         )
-        return await self._raise_status(syncId=syncId)
+        await self._raise_status(syncId=syncId)
+        return None
 
     @error_throw
     async def unmute(
             self,
             group: Union[int, Group],
             member: Union[int, Member],
-    ) -> str:
+    ) -> None:
         """解除群成员禁言
 
         Args:
@@ -1117,7 +1143,7 @@ class Yurine(object):
             member (Union[int, Member]): 指定群员
 
         Returns:
-            str: 
+            None
         """
         syncId = self.namespace.gen()
         await self.ws.send_json(
@@ -1130,7 +1156,8 @@ class Yurine(object):
                 }
             )
         )
-        return await self._raise_status(syncId=syncId)
+        await self._raise_status(syncId=syncId)
+        return None
 
     @error_throw
     async def kick(
@@ -1138,7 +1165,7 @@ class Yurine(object):
             group: Union[int, Group],
             member: Union[int, Member],
             msg: str = "",
-    ) -> str:
+    ) -> None:
         """移除群成员
 
         Args:
@@ -1147,7 +1174,7 @@ class Yurine(object):
             msg (str, optional): 信息. Defaults to "".
 
         Returns:
-            str: 
+            None
         """
         syncId = self.namespace.gen()
         await self.ws.send_json(
@@ -1161,20 +1188,21 @@ class Yurine(object):
                 }
             )
         )
-        return await self._raise_status(syncId=syncId)
+        await self._raise_status(syncId=syncId)
+        return None
 
     @error_throw
     async def quit(
             self,
             group: Union[int, Group]
-    ) -> str:
+    ) -> None:
         """退出群聊
 
         Args:
             group (Union[int, Group]): 退出的群
 
         Returns:
-            str: _description_
+            None
         """
         syncId = self.namespace.gen()
         await self.ws.send_json(
@@ -1186,20 +1214,21 @@ class Yurine(object):
                 }
             )
         )
-        return await self._raise_status(syncId=syncId)
+        await self._raise_status(syncId=syncId)
+        return None
 
     @error_throw
     async def muteAll(
             self,
             group: Union[int, Group],
-    ) -> str:
+    ) -> None:
         """全体禁言
 
         Args:
             group (Union[int, Group]): 指定群
 
         Returns:
-            str: 
+            None
         """
         syncId = self.namespace.gen()
         await self.ws.send_json(
@@ -1211,13 +1240,14 @@ class Yurine(object):
                 }
             )
         )
-        return await self._raise_status(syncId=syncId)
+        await self._raise_status(syncId=syncId)
+        return None
 
     @error_throw
     async def unmuteAll(
             self,
             group: Union[int, Group]
-    ) -> str:
+    ) -> None:
         """解除全体禁言
 
 
@@ -1225,7 +1255,7 @@ class Yurine(object):
             group (Union[int, Group]): 指定群
 
         Returns:
-            str: _description_
+            None
         """
         syncId = self.namespace.gen()
         await self.ws.send_json(
@@ -1237,20 +1267,21 @@ class Yurine(object):
                 }
             )
         )
-        return await self._raise_status(syncId=syncId)
+        await self._raise_status(syncId=syncId)
+        return None
 
     @error_throw
     async def setEssence(
             self,
             messageId: Union[int, Source]
-    ) -> str:
+    ) -> None:
         """设置群精华消息
 
         Args:
             messageId (Union[int, Source]): 精华消息的message
 
         Returns:
-            str: 
+            None
         """
         syncId = self.namespace.gen()
         await self.ws.send_json(
@@ -1262,7 +1293,8 @@ class Yurine(object):
                 }
             )
         )
-        return await self._raise_status(syncId=syncId)
+        await self._raise_status(syncId=syncId)
+        return None
 
     @error_throw
     async def fetchGroupConfig(
@@ -1296,7 +1328,7 @@ class Yurine(object):
             self,
             group: Union[int, Group],
             config: Union[Dict, GroupConfig] = None
-    ) -> str:
+    ) -> None:
         """修改群设置
 
         Args:
@@ -1320,7 +1352,8 @@ class Yurine(object):
                 }
             )
         )
-        return await self._raise_status(syncId=syncId)
+        await self._raise_status(syncId=syncId)
+        return None
 
     @error_throw
     async def fetchMemberInfo(
@@ -1358,7 +1391,7 @@ class Yurine(object):
             group: Union[int, Group],
             member: Union[int, Member],
             info: Union[Dict, MemberInfo]
-    ) -> str:
+    ) -> None:
         """修改群员设置
 
         Args:
@@ -1367,7 +1400,7 @@ class Yurine(object):
             info (Union[Dict, MemberInfo]): 群员设置对象或者字典
 
         Returns:
-            str: _description_
+            None
         """
         if isinstance(info, MemberInfo):
             info = MemberInfo.elements
@@ -1384,7 +1417,8 @@ class Yurine(object):
                 }
             )
         )
-        return await self._raise_status(syncId=syncId)
+        await self._raise_status(syncId=syncId)
+        return None
 
     @error_throw
     async def setMemberAdmin(
@@ -1392,7 +1426,7 @@ class Yurine(object):
             group: Union[int, Group],
             member: Union[int, Member],
             assign: bool,
-    ) -> str:
+    ) -> None:
         """修改群员管理员
 
         Args:
@@ -1401,7 +1435,7 @@ class Yurine(object):
             assign (bool): 是否设置为管理员
 
         Returns:
-            str: _description_
+            None
         """
         syncId = self.namespace.gen()
         await self.ws.send_json(
@@ -1415,7 +1449,8 @@ class Yurine(object):
                 }
             )
         )
-        return await self._raise_status(syncId=syncId)
+        await self._raise_status(syncId=syncId)
+        return None
 
     @error_throw
     async def fetchAnnouncement(
@@ -1459,23 +1494,26 @@ class Yurine(object):
             showEditCard: bool = False,
             showPopup: bool = False,
             requireConfirmation: bool = False,
-            image: Optional[Image] = None
+            image: Optional[Image] = None,
+            imageUrl: Optional[str] = None
     ) -> Optional[Announcement]:
         """此方法向指定群发布群公告
-        group          	    群组，可以是int也可以是群组对象
-        content         	公告内容
-        sendToNewMember    	是否发送给新成员
-        pinned          	是否置顶
-        showEditCard       	是否显示群成员修改群名片的引导
-        showPopup       	是否自动弹出
-        requireConfirmation	是否需要群成员确认
-        image        	    公告图片对象
+        Args:
+            group          	    群组，可以是int也可以是群组对象
+            content         	公告内容
+            sendToNewMember    	是否发送给新成员
+            pinned          	是否置顶
+            showEditCard       	是否显示群成员修改群名片的引导
+            showPopup       	是否自动弹出
+            requireConfirmation	是否需要群成员确认
+            image        	    公告图片对象
+            imageUrl            公告图片url,本地图片请使用karas.elements.Image对象
 
         Returns:
             包含群公告对象的列表
         """
         if isinstance(image, Image):
-            image = self.uploadMultipart(image, type="group")
+            await self.uploadMultipart(image, type_="group")
             imageUrl = image.url
         syncId = self.namespace.gen()
         await self.ws.send_json(
@@ -1490,7 +1528,7 @@ class Yurine(object):
                     "showEditCard": showEditCard,
                     "showPopup": showPopup,
                     "requireConfirmation": requireConfirmation,
-                    "imageUrl": imageUrl if image is not None else None
+                    "imageUrl": imageUrl
                 }
             )
         )
@@ -1502,7 +1540,7 @@ class Yurine(object):
             self,
             group: Union[int, Group],
             fid: int
-    ) -> str:
+    ) -> None:
         """删除群公告
 
         Args:
@@ -1510,7 +1548,7 @@ class Yurine(object):
             fid (int): 群公告id
 
         Returns:
-            str: _description_
+            None
         """
         syncId = self.namespace.gen()
         await self.ws.send_json(
@@ -1523,15 +1561,16 @@ class Yurine(object):
                 }
             )
         )
-        return await self._raise_status(syncId=syncId)
+        await self._raise_status(syncId=syncId)
+        return None
 
-    async def add_task(self, task: asyncio.Task, name: str = None, callback: Callable = None, *task_args) -> str:
+    async def add_task(self, coro: Coroutine, name: str = None, callback: Callable = None, *_, **__) -> str:
         """向Yurine运行的loop中添加一个task"""
-        if not inspect.iscoroutine(task):
-            raise ValueError(f"{task} is not coroutine")
+        if not inspect.iscoroutine(coro):
+            raise ValueError(f"{coro} is not coroutine")
         if name is None:
             name = self.namespace.gen()
-        _task = self.loop.create_task(task, name=name)
+        _task = self.loop.create_task(coro, name=name)
         self._tasks[name] = _task
         self.logging.info(f"add task <task-{name}>")
         if callback:
@@ -1563,11 +1602,11 @@ class Yurine(object):
             except asyncio.CancelledError:
                 self.logging.info(f"canceled <task {_task.get_name()}>")
 
-    async def _raise_status(self, data: Optional[Dict] = None, syncId: str = None) -> Dict:
+    async def _raise_status(self, data: Optional[Dict] = None, syncId: str = None) -> Optional[Dict]:
         try:
             while 1:
                 await asyncio.sleep(.1)
-                _json_data = data or (syncId and self._receivData.pop(syncId, None)) or await self.ws.receive_json()
+                _json_data = data or (syncId and self._receiveData.pop(syncId, None)) or await self.ws.receive_json()
                 if _json_data.get("syncId") and _json_data.get("syncId") == "-1":
                     await self._receiver(_json_data)
                     continue
