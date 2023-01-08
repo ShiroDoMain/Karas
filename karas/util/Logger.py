@@ -3,6 +3,7 @@ import logging
 import os
 import sys
 import time
+from datetime import datetime
 from enum import Enum
 from typing import Callable, List, Optional, Union
 
@@ -113,7 +114,7 @@ class Logging:
         self._callbacks[namespace] = (callback, args, kwargs)
 
     def removeCallback(self, callback: Union[str, Callable]) -> bool:
-        """remove callback, if not return false"""
+        """remove callback, return false if not found"""
         namespace = callback if isinstance(
             callback, str) else callback.__name__
         if namespace not in self.callbacks:
@@ -129,7 +130,7 @@ class Logging:
         current_time = time.localtime()
         color = _color if _color else ""
         color_end = '\033[0m' if color else ""
-        _log = f"{time.strftime('%Y-%m-%d %H:%m:%S', current_time)}" \
+        _log = f"{time.strftime('%Y-%m-%d %H:%M:%S', current_time)}" \
                f"-[{level}]-{name or self.description}/{qq or self.botId}: {msg} "
         _format = f"{color}{_log}{color_end}"
         if self.callbacks:

@@ -29,7 +29,7 @@ from karas.exceptions import *
 from karas.util.Logger import Logging
 from karas.util.network import error_throw, URL_Route, wrap_data_json
 
-__version__ = "0.2.7"
+__version__ = "0.2.8"
 
 
 async def _build_content_json(
@@ -149,6 +149,7 @@ class Yurine(object):
         self.namespace = DefaultNamespace
 
         self._is_running = False
+        self.online = None
         self._receiver_is_running = False
         self._receiveData = {}
         self._tasks = {}
@@ -262,8 +263,11 @@ class Yurine(object):
         while True:
             try:
                 _receive_data: Dict = data or await self.ws.receive_json()
-            # except (BotBaseException, TypeError):
-            #     pass
+            except TypeError:
+                if self.online:
+                    self.logging.warning(f"not valid response")
+                    continue
+                await asyncio.sleep(3)
             except Exception:
                 raise
             syncId = _receive_data.get("syncId")
@@ -271,15 +275,20 @@ class Yurine(object):
                 _parser = self.karas.event_parse(
                     _receive_data["data"], self.logging)
                 _event = await _parser.__anext__()
-                if not self._is_running and isinstance(_event, BotOnlineEvent):
-                    self.logging.info("bot online")
-                    self._is_running = True
-                if isinstance(_event, BotOfflineEventActive):
-                    self.logging.warning("Bot offline, waiting reload...")
-                    self._is_running = self.is_running and False
-                    await asyncio.sleep(1)
-                    await _parser.asend(False)
-                    continue
+                if isinstance(_event, Event):
+                    if not self.online and isinstance(_event.event, BotOnlineEvent):
+                        self.logging.info("bot online")
+                        self.online = True
+                    if isinstance(_event.event, BotOfflineEventActive):
+                        self.logging.warning("Bot offline, waiting reload...")
+                        self.online = self.online and False
+                        await asyncio.sleep(3)
+                        try:
+                            await self._connect()
+                        except BotNotFoundException:
+                            continue
+                        await _parser.asend(False)
+                        continue
                 await _parser.asend(self.account == _event.event.fromId) \
                     if isinstance(_event, Event) else await _parser.asend(False)
             elif syncId:
@@ -323,6 +332,7 @@ class Yurine(object):
             Args:
                 func: 监听到事件时所作的动作
             """
+
             def register_wrapper(*_, **__):
                 for _event in registerEvents:
                     self.logging.debug(
