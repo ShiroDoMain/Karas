@@ -197,6 +197,13 @@ class BotLeaveEventKick(GroupEventBase):
         return super().__str__() + f":{self.group}"
 
 
+class BotLeaveEventDisband(GroupEventBase):
+    """Bot因群主解散群而退出群, 操作人一定是群主"""
+    type: str = "BotLeaveEventDisband"
+    group: Group
+    operator: Member
+
+
 class GroupRecallEvent(GroupEventBase):
     """群消息撤回"""
     type: str = "GroupRecallEvent"
@@ -490,6 +497,7 @@ class EventEnum(Enum):
     BotJoinGroupEvent: "BotJoinGroupEvent" = BotJoinGroupEvent
     BotLeaveEventActive: "BotLeaveEventActive" = BotLeaveEventActive
     BotLeaveEventKick: "BotLeaveEventKick" = BotLeaveEventKick
+    BotLeaveEventDisband: "BotLeaveEventDisband" = BotLeaveEventDisband
     GroupRecallEvent: "GroupRecallEvent" = GroupRecallEvent
     FriendRecallEvent: "FriendRecallEvent" = FriendRecallEvent
     NudgeEvent: "NudgeEvent" = NudgeEvent
@@ -527,8 +535,8 @@ class Auto_Switch_Event(object):
         """
         _type = kwargs.get("type")
         if _type in __events__.get("messageEvent"):
-            _messageEvent: "MessageBase" = MessageEnum[_type].value
+            _messageEvent = MessageEnum[_type].value
             return _messageEvent(**kwargs)
         else:
-            _event: "EventBase" = EventEnum[_type].value
+            _event = EventEnum[_type].value
             return Event(_event(**kwargs))

@@ -68,6 +68,7 @@ from karas.event import (
     MemberJoinEvent,
     MemberLeaveEventKick,
     MemberLeaveEventQuit,
+    BotLeaveEventDisband,
     MemberCardChangeEvent,
     MemberSpecialTitleChangeEvent,
     MemberPermissionChangeEvent,

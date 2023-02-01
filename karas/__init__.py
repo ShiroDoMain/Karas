@@ -29,7 +29,7 @@ from karas.exceptions import *
 from karas.util.Logger import Logging
 from karas.util.network import error_throw, URL_Route, wrap_data_json
 
-__version__ = "0.2.8"
+__version__ = "0.2.9"
 
 
 async def _build_content_json(
@@ -265,7 +265,7 @@ class Yurine(object):
                 _receive_data: Dict = data or await self.ws.receive_json()
             except TypeError:
                 if self.online:
-                    self.logging.warning(f"not valid response")
+                    self.logging.warning(f"invalid response")
                     continue
                 await asyncio.sleep(3)
             except Exception:
@@ -279,6 +279,7 @@ class Yurine(object):
                     if not self.online and isinstance(_event.event, BotOnlineEvent):
                         self.logging.info("bot online")
                         self.online = True
+                        await _parser.asend(False)
                     if isinstance(_event.event, BotOfflineEventActive):
                         self.logging.warning("Bot offline, waiting reload...")
                         self.online = self.online and False
