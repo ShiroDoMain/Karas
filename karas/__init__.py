@@ -12,7 +12,8 @@ from typing import (
     Tuple,
     Union,
     AsyncGenerator,
-    NoReturn
+    NoReturn,
+    Sequence
 )
 import aiohttp
 from karas.util import DefaultNamespace, status_code_exception
@@ -261,11 +262,12 @@ class Yurine(object):
         """事件监听器"""
         self._receiver_is_running = True
         while True:
+            _receive_data = {}
             try:
-                _receive_data: Dict = data or await self.ws.receive_json()
+                _receive_data = data or await self.ws.receive_json()
             except TypeError:
                 if self.online:
-                    self.logging.warning(f"invalid response")
+                    self.logging.error(f"invalid response")
                     continue
                 await asyncio.sleep(3)
             except Exception:
@@ -1574,6 +1576,45 @@ class Yurine(object):
         )
         await self._raise_status(syncId=syncId)
         return None
+
+    async def execute_command(self, *command: Plain) -> Dict:
+        # 执行command
+        syncId = self.namespace.gen()
+        await self.ws.send_json(
+            wrap_data_json(
+                syncId=syncId,
+                command="cmd_execute",
+                content={
+                    "command": [cmd.elements for cmd in command]
+                }
+            )
+        )
+        resp = await self._raise_status(syncId=syncId)
+        return resp
+
+    async def register_command(self, name: str, usage: str, description: str, alias: Optional[List] = None) -> Dict:
+        """
+        Args:
+            name	str		指令名
+            alias	Optional[list]		指令别名
+            usage	str		使用说明
+            description	str		命令描述
+        """
+        syncId = self.namespace.gen()
+        await self.ws.send_json(
+            wrap_data_json(
+                syncId=syncId,
+                command="",
+                content={
+                    "name": name,
+                    "alias": [] if alias is None else alias,
+                    "usage": usage,
+                    "description": description
+                }
+            )
+        )
+        resp = await self._raise_status(syncId=syncId)
+        return resp
 
     async def add_task(self, coro: Coroutine, name: str = None, callback: Callable = None, *_, **__) -> str:
         """向Yurine运行的loop中添加一个task"""

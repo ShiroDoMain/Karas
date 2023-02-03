@@ -94,8 +94,8 @@ class Logging:
         self._level = {
             "INFO": 0,
             "DEBUG": 1,
-            "WARNING": 2,
-            "ERROR": 3
+            "WARNING": 0,
+            "ERROR": 0
         }
         self._logLv = self._level[self._recordLevel]
 

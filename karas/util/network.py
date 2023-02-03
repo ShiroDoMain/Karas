@@ -25,24 +25,30 @@ def error_throw(func):
                     return await func(obj, *args, **kwargs)
                 except ConnectException:
                     await asyncio.sleep(8)
-                except Exception as e:
+                except Exception:
                     traceback.print_exc()
                     await asyncio.sleep(5)
             obj.logging.error("connect fail, closing...")
+            exc_ = traceback.format_exc()
+            obj.logging.error(exc_)
             await obj.stop()
             raise ce
         except FunctionException:
             obj.logging.error("Function Error")
-            traceback.print_exc()
+            exc_ = traceback.format_exc()
+            obj.logging.error(exc_)
             pass
         except BotBaseException as be:
-            obj.logging.error(str(be))
+            exc_ = traceback.format_exc()
+            obj.logging.error(exc_)
             raise be
         except HTTPRequestTimeout:
-            obj.logging.error(f"{func.__name__} timeout")
+            exc_ = traceback.format_exc()
+            obj.logging.error(exc_)
             raise
-        except Exception as exc:
-            obj.logging.error(f"Unknown error {exc}")
+        except Exception:
+            exc_ = traceback.format_exc()
+            obj.logging.error(exc_)
             raise
 
     return _wrapper
