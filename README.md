@@ -48,8 +48,32 @@ yurine.close()
 ## 实例
 [ATRI](https://github.com/ShiroDoMain/ATRI-qqbot)使用了该框架开发，Bot的qq为1977987864  
 
-## 开源
-该框架遵循mirai社区要求使用AGPL-3.0协议开源，如果您使用了该项目开发，请遵循AGPL-3.0开源规范  
-
 ## Notice  
 该框架目前处于开发中状态，如果您在使用过程中发现了bug或者您有好的建议，请尽情提出您的[issues](https://github.com/ShiroDoMain/Karas/issues/new)
+
+## 开源
+该框架遵循AGPL-3.0协议开源，
+```
+iTXTech Mirai Console Loader
+Copyright (C) 2020-2022 iTX Technologies
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+```
+
+
+## 鸣谢  
+本项目使用了[JetBrains](https://www.jetbrains.com/?from=karas)的工具[PyCharm](https://www.jetbrains.com/pycharm/?from=karas)开发  
+感谢JetBrains公司为开源项目提供的授权和支持  
+![https://www.jetbrains.com/?from=karas](https://avatars.githubusercontent.com/u/878437?s=200&v=4)
+
