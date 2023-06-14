@@ -1,6 +1,5 @@
-import inspect
-from aiohttp import ClientSession, ClientWebSocketResponse
 import asyncio
+import inspect
 from typing import (
     Coroutine,
     Awaitable,
@@ -12,25 +11,27 @@ from typing import (
     Tuple,
     Union,
     AsyncGenerator,
-    NoReturn,
-    Sequence
+    NoReturn
 )
+
 import aiohttp
-from karas.util import DefaultNamespace, status_code_exception
-from karas.util.sync import async_to_sync_wrap
+from aiohttp import ClientSession, ClientWebSocketResponse
+
 from karas.chain import Forward, MessageChain, node
-from karas.sender import Friend, Group, Member, Stranger, ReceptorBase, Announcement
-from karas.messages import MessageBase
-from karas.event import Auto_Switch_Event, EventBase, MemberJoinRequestEvent, NewFriendRequestEvent, RequestEvent, \
-    Event, NudgeEvent, BotOfflineEventActive, BotOnlineEvent
 from karas.elements import ElementBase, File, FlashImage, GroupConfig, Image, MemberInfo, Plain, Source, Voice, \
     FriendProfile, MemberProfile, \
     BotProfile, UserProfile
+from karas.event import Auto_Switch_Event, EventBase, MemberJoinRequestEvent, NewFriendRequestEvent, RequestEvent, \
+    Event, NudgeEvent, BotOfflineEventActive, BotOnlineEvent
 from karas.exceptions import *
+from karas.messages import MessageBase
+from karas.sender import Friend, Group, Member, Stranger, ReceptorBase, Announcement
+from karas.util import DefaultNamespace, status_code_exception
 from karas.util.Logger import Logging
 from karas.util.network import error_throw, URL_Route, wrap_data_json
+from karas.util.sync import async_to_sync_wrap
 
-__version__ = "0.2.9"
+__version__ = "0.2.10"
 
 
 async def _build_content_json(
@@ -291,7 +292,7 @@ class Yurine(object):
                         except BotNotFoundException:
                             continue
                         await _parser.asend(False)
-                        continue
+                    continue
                 await _parser.asend(self.account == _event.event.fromId) \
                     if isinstance(_event, Event) else await _parser.asend(False)
             elif syncId:
