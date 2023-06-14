@@ -6,7 +6,7 @@
 ##  Version  
 ![Mirai-API-API-Version](https://img.shields.io/badge/mirai--http--api->=2.5.0-brightgreen.svg?style=plastic)
 ![python-Version](https://img.shields.io/badge/python->=3.7-brightgreen.svg?style=plastic)
-![karas-Version](https://img.shields.io/badge/karas-0.2.10-brightgreen.svg?style=plastic)    
+![karas-Version](https://img.shields.io/badge/karas-0.2.11-brightgreen.svg?style=plastic)    
 ## 使用  
 - 使用pip安装本项目  
 ```shell script

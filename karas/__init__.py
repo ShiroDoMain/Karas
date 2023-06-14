@@ -31,7 +31,7 @@ from karas.util.Logger import Logging
 from karas.util.network import error_throw, URL_Route, wrap_data_json
 from karas.util.sync import async_to_sync_wrap
 
-__version__ = "0.2.10"
+__version__ = "0.2.11"
 
 
 async def _build_content_json(
